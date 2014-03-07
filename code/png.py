@@ -160,6 +160,20 @@ import sys
 import zlib
 # http://www.python.org/doc/2.4.4/lib/module-warnings.html
 import warnings
+import copy
+
+try:
+    from functools import reduce
+except ImportError:
+    #suppose to get there on python<2.7 where reduce is only built-in function
+    pass
+
+try:
+    from itertools import imap as map
+except ImportError:
+    #On Python 3 there is no imap, but map works like imap instead
+    #On Python 2.2 simple map works not delayed, but works
+    pass
 
 __all__ = ['Image', 'Reader', 'Writer', 'write_chunks', 'from_array']
 
@@ -176,9 +190,11 @@ _adam7 = ((0, 0, 8, 8),
           (1, 0, 2, 2),
           (0, 1, 1, 2))
 
+
 def group(s, n):
     # See http://www.python.org/doc/2.6/library/functions.html#zip
-    return zip(*[iter(s)]*n)
+    return list(zip(*[iter(s)] * n))
+
 
 def isarray(x):
     """Same as ``isinstance(x, array)`` except on Python 2.2, where it
@@ -190,6 +206,11 @@ def isarray(x):
     except TypeError:
         # Because on Python 2.2 array.array is not a type.
         return False
+try:
+    next
+except NameError:
+    def next(it):
+        return it.next()
 
 try:
     array.tobytes
@@ -397,7 +418,6 @@ class BaseFilter:
             a = result[ai]
             result[i] = (x + a) & 0xff
             ai += 1
-        return 0
 
     def __do_filter_sub(self, scanline, result):
         """Sub filter."""
@@ -408,7 +428,6 @@ class BaseFilter:
             a = scanline[ai]
             result[i] = (x - a) & 0xff
             ai += 1
-        return 0
 
     def __undo_filter_up(self, scanline, result):
         """Undo up filter."""
@@ -416,7 +435,6 @@ class BaseFilter:
             x = scanline[i]
             b = self.prev[i]
             result[i] = (x + b) & 0xff
-        return 0
 
     def __do_filter_up(self, scanline, result):
         """Up filter."""
@@ -425,7 +443,6 @@ class BaseFilter:
             x = scanline[i]
             b = self.prev[i]
             result[i] = (x - b) & 0xff
-        return 0
 
     def __undo_filter_average(self, scanline, result):
         """Undo average filter."""
@@ -440,7 +457,6 @@ class BaseFilter:
             b = self.prev[i]
             result[i] = (x + ((a + b) >> 1)) & 0xff
             ai += 1
-        return 0
 
     def __do_filter_average(self, scanline, result):
         """Average filter."""
@@ -455,7 +471,6 @@ class BaseFilter:
             b = self.prev[i]
             result[i] = (x - ((a + b) >> 1)) & 0xff
             ai += 1
-        return 0
 
     def __paeth(self, a, b, c):
         p = a + b - c
@@ -483,7 +498,6 @@ class BaseFilter:
             b = self.prev[i]
             result[i] = (x + self.__paeth(a, b, c)) & 0xff
             ai += 1
-        return 0
 
     def __do_filter_paeth(self, scanline, result):
         """Paeth filter."""
@@ -500,7 +514,6 @@ class BaseFilter:
             b = self.prev[i]
             result[i] = (x - self.__paeth(a, b, c)) & 0xff
             ai += 1
-        return 0
 
     def unfilter_scanline(self, filter_type, line, result):
         """Undo the filter for a scanline."""
@@ -526,7 +539,6 @@ class BaseFilter:
         # This will not work writing cython attributes from python
         # Only 'cython from cython' or 'python from python'
         self.prev[:] = result
-        return 0
 
     def filter_scanline(self, filter_type, line, result):
         """Apply a scanline filter to a scanline.
@@ -559,7 +571,6 @@ class BaseFilter:
             self.__do_filter_average(line, result)
         elif fa == 4:
             self.__do_filter_paeth(line, result)
-        return 0
 
     # Todo: color conversion functions should be moved
     # to a separate part in future
@@ -568,7 +579,6 @@ class BaseFilter:
             for j in range(3):
                 result[(4 * i) + j] = row[2 * i]
             result[(4 * i) + 3] = row[(2 * i) + 1]
-        return 0
 
     def convert_l_to_rgba(self, row, result):
         """Convert a grayscale image to RGBA. This method assumes the alpha
@@ -577,7 +587,6 @@ class BaseFilter:
         for i in range(len_ba(row) // 3):
             for j in range(3):
                 result[(4 * i) + j] = row[i]
-        return 0
 
     def convert_rgb_to_rgba(self, row, result):
         """Convert an RGB image to RGBA. This method assumes the alpha
@@ -586,7 +595,7 @@ class BaseFilter:
         for i in range(len_ba(row) // 3):
             for j in range(3):
                 result[(4 * i) + j] = row[(3 * i) + j]
-        return 0
+
 
 iBaseFilter = BaseFilter  # 'i' means 'internal'
 try:
@@ -1015,15 +1024,15 @@ class Writer:
                 a.extend([0]*int(extra))
                 # Pack into bytes
                 l = group(a, spb)
-                l = map(lambda e: reduce(lambda x,y:
-                                           (x << self.bitdepth) + y, e), l)
+                l = [reduce(lambda x, y: (x << self.bitdepth) + y, e)
+                     for e in l]
                 byteextend(l)
         if self.rescale:
             oldextend = extend
             factor = \
               float(2**self.rescale[1]-1) / float(2**self.rescale[0]-1)
             def extend(sl):
-                oldextend(map(lambda x: int(round(factor*x)), sl))
+                oldextend([int(round(factor * x)) for x in sl])
 
         # Build the first row, testing mostly to see if we need to
         # changed the extend function to cope with NumPy integer types
@@ -1036,7 +1045,7 @@ class Writer:
         # :todo: Certain exceptions in the call to ``.next()`` or the
         # following try would indicate no row data supplied.
         # Should catch.
-        i,row = enumrows.next()
+        i,row = next(enumrows)
         try:
             # If this fails...
             extend(row)
@@ -1046,7 +1055,7 @@ class Writer:
             # types, there are probably lots of other, unknown, "nearly"
             # int types it works for.
             def wrapmapint(f):
-                return lambda sl: f(map(int, sl))
+                return lambda sl: f([int(x) for x in sl])
             extend = wrapmapint(extend)
             del wrapmapint
             extend(row)
@@ -1160,7 +1169,7 @@ class Writer:
                 return array('H', struct.unpack(fmt, infile.read(row_bytes)))
         else:
             def line():
-                scanline = bytearray(infile.read(row_bytes))
+                scanline = array('B', infile.read(row_bytes))
                 return scanline
         for y in range(self.height):
             yield line()
@@ -1298,7 +1307,7 @@ class Filter(BaseFilter):
 
         line = bytearray(line)
         if isinstance(filter_type, int):
-            res = bytearray(line)
+            res = copy.copy(line)
             self.filter_scanline(filter_type, line, res)
             res.insert(0, filter_type)  # Add filter type as the first byte
         else:
@@ -1322,20 +1331,20 @@ class Filter(BaseFilter):
         filter_type = scanline[0]
         scanline = bytearray(scanline[1:])
         if filter_type == 0:
-            self.prev = bytearray(scanline)
+            self.prev = copy.copy(scanline)
             return scanline
 
         if filter_type not in (1, 2, 3, 4):
             raise FormatError('Invalid PNG Filter Type.'
               '  See http://www.w3.org/TR/2003/REC-PNG-20031110/#9Filters .')
 
-        result = bytearray(scanline)
+        result = copy.copy(scanline)
         self.unfilter_scanline(filter_type, scanline, result)
         return result
 
 
 def adapt_sum(lines, cfg, filter_obj):
-    res_s = map(lambda it: sum(it), lines)
+    res_s = [sum(it) for it in lines]
     r = res_s.index(min(res_s))
     return lines[r]
 
@@ -1499,7 +1508,7 @@ def from_array(a, mode=None, info={}):
     # first row, which requires that we take a copy of its iterator.
     # We may also need the first row to derive width and bitdepth.
     a,t = itertools.tee(a)
-    row = t.next()
+    row = next(t)
     del t
     try:
         row[0][0]
@@ -1687,7 +1696,7 @@ class Reader:
                   % (type, length))
             checksum = self.file.read(4)
             if len(checksum) != 4:
-                raise ValueError('Chunk %s too short for checksum.', tag)
+                raise ValueError('Chunk %s too short for checksum.', type)
             if seek and type != seek:
                 continue
             verify = zlib.crc32(strtobytes(type))
@@ -1787,12 +1796,13 @@ class Reader:
             spb = 8//self.bitdepth
             out = array('B')
             mask = 2**self.bitdepth - 1
-            shifts = map(self.bitdepth.__mul__, reversed(range(spb)))
+            #                                      reversed range(spb)
+            shifts = [self.bitdepth * it for it in range(spb - 1, -1, -1)]
             for o in raw:
-                out.extend(map(lambda i: mask&(o>>i), shifts))
+                out.extend([mask & (o >> i) for i in shifts])
             return out[:width]
 
-        return itertools.imap(asvalues, rows)
+        return map(asvalues, rows)
 
     def serialtoflat(self, bytes, width=None):
         """Convert serial format (byte stream) pixel data to flat row
@@ -1812,7 +1822,8 @@ class Reader:
         spb = 8//self.bitdepth
         out = array('B')
         mask = 2**self.bitdepth - 1
-        shifts = map(self.bitdepth.__mul__, reversed(range(spb)))
+        #                                      reversed range(spb)
+        shifts = [self.bitdepth * it for it in range(spb - 1, -1, -1)]
         l = width
         for o in bytes:
             out.extend([(mask&(o>>s)) for s in shifts][:l])
@@ -2027,7 +2038,7 @@ class Reader:
         while True:
             try:
                 typ, data = self.chunk(lenient=lenient)
-            except ValueError, e:
+            except ValueError as e:
                 raise ChunkError(e.args[0])
             if typ == 'IEND':
                 # http://www.w3.org/TR/PNG/#11IEND
@@ -2076,7 +2087,7 @@ class Reader:
             arraycode = 'BH'[self.bitdepth>8]
             # Like :meth:`group` but producing an array.array object for
             # each row.
-            pixels = itertools.imap(lambda *row: array(arraycode, row),
+            pixels = map(lambda *row: array(arraycode, row),
                        *[iter(self.deinterlace(raw))]*self.width*self.planes)
         else:
             pixels = self.iterboxed(self.iterstraight(raw))
@@ -2131,7 +2142,7 @@ class Reader:
         if self.trns or alpha == 'force':
             trns = bytearray(self.trns or '')
             trns.extend([255]*(len(plte)-len(trns)))
-            plte = map(operator.add, plte, group(trns, 1))
+            plte = list(map(operator.add, plte, group(trns, 1)))
         return plte
 
     def asDirect(self):
@@ -2188,7 +2199,7 @@ class Reader:
             plte = self.palette()
             def iterpal(pixels):
                 for row in pixels:
-                    row = map(plte.__getitem__, row)
+                    row = [plte[i] for i in row]
                     yield array('B', itertools.chain(*row))
             pixels = iterpal(pixels)
         elif self.trns:
@@ -2213,11 +2224,10 @@ class Reader:
                     # True/False to 0/maxval (by multiplication),
                     # and add it as the extra channel.
                     row = group(row, planes)
-                    opa = map(it.__ne__, row)
-                    opa = map(maxval.__mul__, opa)
+                    opa = [maxval * (it != i) for i in row]
                     opa = zip(opa) # convert to 1-tuples
                     yield array(typecode,
-                      itertools.chain(*map(operator.add, row, opa)))
+                      itertools.chain(*list(map(operator.add, row, opa))))
             pixels = itertrns(pixels)
         targetbitdepth = None
         if self.sbit:
@@ -2235,7 +2245,7 @@ class Reader:
             meta['bitdepth'] = targetbitdepth
             def itershift(pixels):
                 for row in pixels:
-                    yield map(shift.__rrshift__, row)
+                    yield [it >> shift for it in row]
             pixels = itershift(pixels)
         return x,y,pixels,meta
 
@@ -2252,7 +2262,7 @@ class Reader:
         factor = float(maxval)/float(sourcemaxval)
         def iterfloat():
             for row in pixels:
-                yield map(factor.__mul__, row)
+                yield [factor * it for it in row]
         return x,y,iterfloat(),info
 
     def _as_rescale(self, get, targetbitdepth):
@@ -2265,7 +2275,7 @@ class Reader:
         meta['bitdepth'] = targetbitdepth
         def iterscale():
             for row in pixels:
-                yield map(lambda x: int(round(x*factor)), row)
+                yield [int(round(x * factor)) for x in row]
         if maxval == targetmaxval:
             return width, height, pixels, meta
         else:
@@ -2485,14 +2495,6 @@ except NameError:
             yield i,x
             i += 1
 
-try:
-    reversed
-except NameError:
-    def reversed(l):
-        l = list(l)
-        l.reverse()
-        for x in l:
-            yield x
 
 try:
     itertools
@@ -2500,16 +2502,22 @@ except NameError:
     class _dummy_itertools:
         pass
     itertools = _dummy_itertools()
-    def _itertools_imap(f, seq):
-        for x in seq:
-            yield f(x)
-    itertools.imap = _itertools_imap
     def _itertools_chain(*iterables):
         for it in iterables:
             for element in it:
                 yield element
     itertools.chain = _itertools_chain
 
+try:
+    import logging
+except ImportError:
+    #Suppose to work in 2.2
+    def error(message):
+        #this trick used to avoid syntax error in python3
+        exec("print >>sys.stderr, message", locals())
+
+    class logging:
+        error = staticmethod(error)
 
 # === Command Line Support ===
 
@@ -2778,8 +2786,8 @@ def _main(argv):
         # the source image to determine which one we have.  We do not
         # care about TUPLTYPE.
         greyscale = depth <= 2
-        pamalpha = depth in (2,4)
-        supported = map(lambda x: 2**x-1, range(1,17))
+        pamalpha = depth in (2, 4)
+        supported = [2 ** x - 1 for x in range(1, 17)]
         try:
             mi = supported.index(maxval)
         except ValueError:
@@ -2816,5 +2824,5 @@ def _main(argv):
 if __name__ == '__main__':
     try:
         _main(sys.argv)
-    except Error, e:
-        print >>sys.stderr, e
+    except Error as e:
+        logging.error(e)
