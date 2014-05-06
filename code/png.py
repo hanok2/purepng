@@ -229,8 +229,7 @@ except NameError:
 
 else:
     # bytearray exists (>= Python 2.6).
-    def newarray(length=0):
-        return bytearray(length)
+    newarray = bytearray
     try:
         bytes
     except NameError:
