@@ -12,7 +12,7 @@ cdef inline buf_arr newarray(int length):
 	cdef buf_arr res
 	cdef int i
 	#Seek for more effective view init (but without bytearrays)
-	res = carray(shape=(length,), itemsize=sizeof(uchar), format="B")
+	res = carray((length,), sizeof(uchar), "B")
 	for i in range(length):
 		res[i] = 0
 	return res
@@ -46,7 +46,6 @@ cdef class BaseFilter:
 
 	cpdef unfilter_scanline(self, int filter_type, unsigned char[::1] line, unsigned char[::1] result)
 
-	@cython.locals(fa = cython.int)
 	cpdef filter_scanline(self, int filter_type, unsigned char[::1] line, unsigned char[::1] result)
 
 	@cython.locals(i=cython.int, j=cython.int)

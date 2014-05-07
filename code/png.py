@@ -559,7 +559,6 @@ class BaseFilter:
         """
 
         assert 0 <= filter_type < 5
-        fa = filter_type
         if self.prev is None:
         # We're on the first line.  Some of the filters can be reduced
         # to simpler cases which makes handling the line "off the top"
@@ -568,19 +567,19 @@ class BaseFilter:
         # specially.
             if filter_type == 2:  # "up"
                 #return line
-                fa = 0
+                filter_type = 0
             elif filter_type == 3:
                 self.prev = newarray(len(line))
             elif filter_type == 4:  # "paeth"
-                fa = 1
+                filter_type = 1
 
-        if fa == 1:
+        if filter_type == 1:
             self.__do_filter_sub(line, result)
-        elif fa == 2:
+        elif filter_type == 2:
             self.__do_filter_up(line, result)
-        elif fa == 3:
+        elif filter_type == 3:
             self.__do_filter_average(line, result)
-        elif fa == 4:
+        elif filter_type == 4:
             self.__do_filter_paeth(line, result)
 
     # Todo: color conversion functions should be moved

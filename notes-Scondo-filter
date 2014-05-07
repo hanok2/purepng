@@ -3,9 +3,6 @@ reallocating each row. It is considered harmful.
 
 Cython instructions are unclear (and I don't care much).
 
-The `fa` variable in filter_scanline is redundant. Just mutate
-filter_type instead.
-
 convert_la_to_rgba seems very slow; ditto convert_l_to_rgba; and
 convert_rgb_to_rgba.
 
