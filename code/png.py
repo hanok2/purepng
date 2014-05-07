@@ -1277,11 +1277,12 @@ class Filter(BaseFilter):
         For using with adaptive filters
         """
 
-        lines = [bytearray(it) for it in ([line] * 5)]
-        f_types = (0, 1, 2, 4, 3)  # 3 is last to use first line optimisation
-        for res, filter_type in zip(lines, f_types):
+        lines = [None] * 5
+        for filter_type in range(5):  # range save more than 'optimised' order
+            res = copy.copy(line)
             self.filter_scanline(filter_type, line, res)
             res.insert(0, filter_type)
+            lines[filter_type] = res
         return lines
 
     adapt_methods = {}

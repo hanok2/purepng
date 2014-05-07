@@ -27,9 +27,6 @@ use min() with a key= argument (probably not in Python 2.2)
 
 Why have iteridat() and iterdecomp been renamed?
 
-"Note that order in list is not equal to filter number" yeah.
-well, perhaps it should be.
-
 in setup.py ...
 
 Instead of setupt I'd prefer "setuptools = False; try: import

@@ -617,10 +617,10 @@ class Test(unittest.TestCase):
         self.assertEqual(list(res[1]), [1, 30, 31, 32, 200, 200, 200])
         # up
         self.assertEqual(list(res[2]), [2, 30, 31, 32, 230, 231, 232])
-        # average  ! Note that order in list is not equal to filter number
-        self.assertEqual(list(res[4]), [3, 30, 31, 32, 215, 216, 216])
-        # paeth    ! Note that order in list is not equal to filter number
-        self.assertEqual(list(res[3]), [
+        # average
+        self.assertEqual(list(res[3]), [3, 30, 31, 32, 215, 216, 216])
+        # paeth
+        self.assertEqual(list(res[4]), [
             4, self.paeth(30, 0, 0, 0), self.paeth(31, 0, 0, 0),
             self.paeth(32, 0, 0, 0), self.paeth(230, 30, 0, 0),
             self.paeth(231, 31, 0, 0), self.paeth(232, 32, 0, 0)
@@ -637,10 +637,10 @@ class Test(unittest.TestCase):
         self.assertEqual(list(res[1]), [1, 30, 32, 34, 200, 201, 202])
         # up
         self.assertEqual(list(res[2]), [2, 10, 11, 12, 20, 22, 24])
-        # average  ! Note that order in list is not equal to filter number
-        self.assertEqual(list(res[4]), [3, 20, 22, 23, 110, 112, 113])
-        # paeth    ! Note that order in list is not equal to filter number
-        self.assertEqual(list(res[3]), [
+        # average
+        self.assertEqual(list(res[3]), [3, 20, 22, 23, 110, 112, 113])
+        # paeth
+        self.assertEqual(list(res[4]), [
             4, self.paeth(30, 0, 20, 0), self.paeth(32, 0, 21, 0),
             self.paeth(34, 0, 22, 0), self.paeth(230, 30, 210, 20),
             self.paeth(233, 32, 211, 21), self.paeth(236, 34, 212, 22)
