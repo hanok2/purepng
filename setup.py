@@ -16,11 +16,9 @@ import os
 try:
     # http://peak.telecommunity.com/DevCenter/setuptools#basic-use
     from setuptools import setup
-    setupt = True
 except ImportError:
     # http://docs.python.org/release/2.4.4/dist/setup-script.html
     from distutils.core import setup
-    setupt = False
 
 try:
     from Cython.Build import cythonize
@@ -68,58 +66,7 @@ http://pythonhosted.org/pypng/
 conf['download_url'] = \
   'https://github.com/drj11/pypng/archive/%(name)s-%(version)s.tar.gz' % conf
 
-def prepare3():
-    """Prepare files for installing on Python 3.  If you have
-    distribute for Python 3, then we don't need to run this.
-    """
-
-    import os.path
-    import shutil
-    from lib2to3.main import main
-
-    try:
-        os.mkdir('code3')
-    except OSError:
-        pass
-
-    # The old package_dir, containing Python 2 code.
-    package_dir = conf['package_dir']['']
-    def package_file(name):
-        """Prepend the package_dir directory to a filename."""
-        return os.path.join(package_dir, name)
-
-    # Convert Python 2 to Python 3 code.
-
-    # pngsuite doesn't get copied by 2to3 because it needs no
-    # changes.
-    shutil.copy(package_file('pngsuite.py'), 'code3')
-
-    main("lib2to3.fixes", ["-w", "-n", "-o", "code3",
-                           package_file('png.py'),
-                           package_file('test_png.py'),
-                           package_file('pngsuite.py')])
-
-    # As we use package_dir for cython too we must copy type declaration
-    try:
-        os.remove(join('code3', 'pngfilters.pxd'))
-    except:  # Error seems to be platform-specific so can't be imported
-        pass
-    # We are in python 3 if we get here so use const from python3
-    if os.name == 'posix' or os.name == 'mac' or\
-        (os.name == 'nt' and sys.version_info[1] >= 2):
-        os.link(package_file('pngfilters.pxd'),
-                os.path.join('code3', 'pngfilters.pxd'))
-    else:
-        cython = False
-    conf['package_dir'] = {'': 'code3'}
-
 if __name__ == '__main__':
-    if setupt:
-        # distribute is probably installed, so use_2to3 should work
-        conf['use_2to3'] = True
-    else:
-        if sys.version_info >= (3,):
-            prepare3()
     if '--no-cython' in sys.argv:
         cython = False
         sys.argv.remove('--no-cython')

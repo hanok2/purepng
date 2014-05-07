@@ -33,8 +33,3 @@ Instead of setupt I'd prefer "setuptools = False; try: import
 setuptools".
 
 Similarly, cythonize = False.  Hmm cythonize.
-
-from os.path import join. bletch.
-from lib2to3.main import main. bletch bletch.
-
-os.remove bare except: very very bad.
