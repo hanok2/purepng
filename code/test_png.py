@@ -32,9 +32,34 @@ import sys
 
 from png import strtobytes      # Don't do this at home.
 
+try:
+    import logging
+    logging.getLogger().setLevel(logging.INFO)
+except ImportError:
+    #Suppose to work in 2.2
+    def warning(message):
+        message = "WRNG: "
+        #this trick used to avoid syntax error in python3
+        exec("print >>sys.stderr, message", locals())
+
+    def info(message):
+        message = "Info: "
+        #this trick used to avoid syntax error in python3
+        exec("print >>sys.stderr, message", locals())
+
+    class logging:
+        warning = staticmethod(warning)
+        info = staticmethod(info)
+
 
 def runTest():
     unittest.main(__name__)
+
+
+def group(s, n):
+    # See http://www.python.org/doc/2.6/library/functions.html#zip
+    return list(zip(*[iter(s)] * n))
+
 
 def topngbytes(name, rows, x, y, **k):
     """
@@ -47,7 +72,7 @@ def topngbytes(name, rows, x, y, **k):
 
     import os
 
-    print name
+    logging.info(name)
     f = BytesIO()
     w = png.Writer(x, y, **k)
     w.write(f, rows)
@@ -64,7 +89,6 @@ def _redirect_io(inp, out, f):
     """
 
     import os
-    import sys
 
     oldin, sys.stdin = sys.stdin, inp
     oldout, sys.stdout = sys.stdout, out
@@ -120,13 +144,14 @@ class Test(unittest.TestCase):
         # tested.  Making it a test for Issue 20.
         w = png.Writer(15, 17, greyscale=True, bitdepth=n, chunk_limit=99)
         f = BytesIO()
-        w.write_array(f, array('B', map(mask.__and__, range(1, 256))))
+        w.write_array(f, array('B', [mask & it for it in range(1, 256)]))
         r = png.Reader(bytes=f.getvalue())
         x,y,pixels,meta = r.read()
         self.assertEqual(x, 15)
         self.assertEqual(y, 17)
         self.assertEqual(list(itertools.chain(*pixels)),
-                         map(mask.__and__, range(1,256)))
+                         [mask & it for it in range(1, 256)])
+
     def testL8(self):
         return self.helperLN(8)
     def testL4(self):
@@ -155,7 +180,8 @@ class Test(unittest.TestCase):
         x,y,pixels,meta = r.asRGB8()
         self.assertEqual(x, 1)
         self.assertEqual(y, 4)
-        self.assertEqual(map(list, pixels), map(list, [a, b, b, c]))
+        self.assertEqual([list(p) for p in pixels], [list(p) for p in (a, b, b, c)])
+
     def testPtrns(self):
         "Test colour type 3 and tRNS chunk (and 4-bit palette)."
         a = (50,99,50,50)
@@ -174,8 +200,10 @@ class Test(unittest.TestCase):
         d = d+(255,)
         e = e+(255,)
         boxed = [(e,d,c),(d,c,a),(c,a,b)]
-        flat = map(lambda row: itertools.chain(*row), boxed)
-        self.assertEqual(map(list, pixels), map(list, flat))
+        flat = [itertools.chain(*row) for row in boxed]
+        self.assertEqual([list(it) for it in pixels],
+                         [list(it) for it in flat])
+
     def testRGBtoRGBA(self):
         "asRGBA8() on colour type 2 source."""
         # Test for Issue 26
@@ -223,7 +251,7 @@ class Test(unittest.TestCase):
             candi = candidate.replace('n', 'i')
             if candi not in pngsuite.png:
                 continue
-            print 'adam7 read', candidate
+            logging.info('adam7 read' + candidate)
             straight = png.Reader(bytes=pngsuite.png[candidate])
             adam7 = png.Reader(bytes=pngsuite.png[candi])
             # Just compare the pixels.  Ignore x,y (because they're
@@ -231,7 +259,8 @@ class Test(unittest.TestCase):
             # "interlace" member differs.  Lame.
             straight = straight.read()[2]
             adam7 = adam7.read()[2]
-            self.assertEqual(map(list, straight), map(list, adam7))
+            self.assertEqual([list(it) for it in straight],
+                             [list(it) for it in adam7])
 
     def testAdam7write(self):
         """Adam7 interlace writing.
@@ -243,7 +272,7 @@ class Test(unittest.TestCase):
         for filtertype in (0, 1, 2, 3, 4,\
                            {'name': 'sum'},\
                            {'name': 'entropy'}):
-            for name, bytes_ in pngsuite.png.iteritems():
+            for name, bytes_ in pngsuite.png.items():
                 # Only certain colour types supported for this test.
                 if name[3:5] not in ['n0', 'n2', 'n4', 'n6']:
                     continue
@@ -266,7 +295,7 @@ class Test(unittest.TestCase):
                                   transparent=it.transparent,
                                   interlace=True, filter_type=filtertype)
                 x, y, pi, meta = png.Reader(bytes=pngs).read()
-                self.assertEqual(map(list, ps), map(list, pi))
+                self.assertEqual([list(it) for it in ps], [list(it) for it in pi])
 
     def testPGMin(self):
         """Test that the command line tool can read PGM files."""
@@ -500,7 +529,7 @@ class Test(unittest.TestCase):
         img.save(o)
     def testfromarrayIter(self):
         i = itertools.islice(itertools.count(10), 20)
-        i = itertools.imap(lambda x: [x, x, x], i)
+        i = [[x, x, x] for x in i]
         img = png.from_array(i, 'RGB;5', dict(height=20))
         f = BytesIO()
         img.save(f)
@@ -521,10 +550,10 @@ class Test(unittest.TestCase):
         try:
             import numpy
         except ImportError:
-            print >>sys.stderr, "skipping numpy test"
+            logging.info("skipping numpy test")
             return
 
-        rows = [map(numpy.uint16, range(0,0x10000,0x5555))]
+        rows = [[numpy.uint16(it) for it in range(0, 0x10000, 0x5555)]]
         b = topngbytes('numpyuint16.png', rows, 4, 1,
             greyscale=True, alpha=False, bitdepth=16)
     def testNumpyuint8(self):
@@ -533,10 +562,10 @@ class Test(unittest.TestCase):
         try:
             import numpy
         except ImportError:
-            print >>sys.stderr, "skipping numpy test"
+            logging.info("skipping numpy test")
             return
 
-        rows = [map(numpy.uint8, range(0,0x100,0x55))]
+        rows = [[numpy.uint8(it) for it in range(0, 0x100, 0x55)]]
         b = topngbytes('numpyuint8.png', rows, 4, 1,
             greyscale=True, alpha=False, bitdepth=8)
     def testNumpybool(self):
@@ -545,10 +574,10 @@ class Test(unittest.TestCase):
         try:
             import numpy
         except ImportError:
-            print >>sys.stderr, "skipping numpy test"
+            logging.info("skipping numpy test")
             return
 
-        rows = [map(numpy.bool, [0,1])]
+        rows = [[numpy.bool(it) for it in (0, 1)]]
         b = topngbytes('numpybool.png', rows, 2, 1,
             greyscale=True, alpha=False, bitdepth=1)
     def testNumpyarray(self):
@@ -556,7 +585,7 @@ class Test(unittest.TestCase):
         try:
             import numpy
         except ImportError:
-            print >>sys.stderr, "skipping numpy test"
+            logging.info("skipping numpy test")
             return
 
         pixels = numpy.array([[0,0x5555],[0x5555,0xaaaa]], numpy.uint16)
@@ -645,7 +674,3 @@ class Test(unittest.TestCase):
 
         out = filter_.undo_filter(scanline[0], scanline[1:])
         self.assertEqual(list(out), [8, 10, 9, 108, 111, 113])  # paeth
-
-def group(s, n):
-    # See http://www.python.org/doc/2.6/library/functions.html#zip
-    return zip(*[iter(s)]*n)
