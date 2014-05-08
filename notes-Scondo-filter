@@ -9,17 +9,10 @@ convert_rgb_to_rgba.
 iBaseFilter isn't necessary. Or is it? It's used later for
 16-bit images.
 
-Need documentation for filter_type in class Writer.
-
 byteextend now applies filters. Rename appropriately.
 
 The "Apply a scanline filter" comment seems to have gone.
 replace it.
-
-adapt_methods etc is badly commented.
-
-adapt_sum and adapt_entropy inconsistent style. Also, can we
-use min() with a key= argument (probably not in Python 2.2)
 
 "return array('B', raw)" should be bytearray? (actually no)
 

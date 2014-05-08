@@ -176,7 +176,8 @@ except ImportError:
     #On Python 2.2 simple map works not delayed, but works
     pass
 
-__all__ = ['Image', 'Reader', 'Writer', 'write_chunks', 'from_array']
+__all__ = ['Image', 'Reader', 'Writer',
+           'register_af_strategy', 'write_chunks', 'from_array']
 
 
 # The PNG signature.
@@ -259,6 +260,12 @@ else:
         # do we get here?
         def bytearray_to_bytes(src):
             return str(src)
+
+# Python 3 workaround
+try:
+    basestring
+except NameError:
+    basestring = str
 
 # Conditionally convert to bytes.  Works on Python 2 and Python 3.
 try:
@@ -755,6 +762,14 @@ class Writer:
         `chunk_limit` is used to limit the amount of memory used whilst
         compressing the image.  In order to avoid using large amounts of
         memory, multiple ``IDAT`` chunks may be created.
+
+        'filter_type' is number or name of filter type for better compression
+            see http://www.w3.org/TR/PNG/#9Filter-types for details
+        It's also possible to use adaptive strategy for choosing filter type
+        per row. Predefined strategies are 'sum' and 'entropy'.
+        Custom strategies can be added with 'register_af_strategy' method or
+        be callable passed with this argument.
+        (see more at 'register_af_strategy')
         """
 
         # At the moment the `planes` argument is ignored;
@@ -791,9 +806,17 @@ class Writer:
               bitdepth)
 
         if filter_type is None:
-            self.filter_type = 0
-        else:
-            self.filter_type = filter_type
+            filter_type = 0
+        if isinstance(filter_type, basestring):
+            str_ftype = str(filter_type).lower()
+            filter_names = {'none': 0,
+                            'sub': 1,
+                            'up': 2,
+                            'average': 3,
+                            'paeth': 4}
+            if str_ftype in filter_names:
+                filter_type = filter_names[str_ftype]
+        self.filter_type = filter_type
 
         self.rescale = None
         if palette:
@@ -1287,23 +1310,27 @@ class Filter(BaseFilter):
         return lines
 
     adapt_methods = {}
-    # This dict should keep be methods of adaptive filtering
-    # Signature is def(lines, cfg, filter_obj)
-    # lines - list of lines filtered with defaulf filters
-    # cfg - dict with optional tuning
-    # filter_obj - instance of this class (for context)
-    # method should return filtered line
 
-    def adaptive_filter(self, cfg, line):
+    def adaptive_filter(self, strategy, line):
         """Applying adaptive filters
-        'filter' specifies name of filter-selection stratery
-        'cfg' specifies config for this trategy (if strategy configurable)
+        'strategy' may be one of following types:
+             string - find and use strategy with this name
+             dict - find and use strategy by field 'name' of this dict
+                    and use it with this dict as configuration
+             callable - use this callable as strategy with empty dict as cfg
+                         (check 'register_af_strategy' for documentation)
         'line` specifies the current (unfiltered) scanline as a sequence
         of bytes;
         """
 
         lines = self.filter_all(line)
-        strategy = Filter.adapt_methods.get(cfg['name'])
+        if isinstance(strategy, basestring):
+            strategy = {'name': str(strategy)}
+        if isinstance(strategy, dict):
+            cfg = strategy
+            strategy = Filter.adapt_methods.get(cfg['name'])
+        else:
+            cfg = {}
         if strategy is None:
             raise Error("Adaptive strategy not found")
         else:
@@ -1356,20 +1383,32 @@ class Filter(BaseFilter):
         return result
 
 
+def register_af_startegy(selector, name):
+    """Register adaptive filter selection strategy for futher usage.
+    'selector' - callable like def(lines, cfg, filter_obj)
+        lines - list of lines filtered with default filters
+        cfg - dict with optional tuning
+        filter_obj - instance of this class (for context)
+        callable should return chosen line
+
+    'name' - name which may be used later to recall this strategy
+    """
+    Filter.adapt_methods[str(name)] = selector
+
+
+#Two basic adaptive strategies
 def adapt_sum(lines, cfg, filter_obj):
     res_s = [sum(it) for it in lines]
     r = res_s.index(min(res_s))
     return lines[r]
+register_af_startegy(adapt_sum, 'sum')
 
 
 def adapt_entropy(lines, cfg, filter_obj):
     res_c = [len(set(it)) for it in lines]
     r = res_c.index(min(res_c))
     return lines[r]
-
-#Two basic adaptive strategies
-Filter.adapt_methods['sum'] = adapt_sum
-Filter.adapt_methods['entropy'] = adapt_entropy
+register_af_startegy(adapt_entropy, 'entropy')
 
 
 def from_array(a, mode=None, info={}):
