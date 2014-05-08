@@ -23,6 +23,4 @@ use min() with a key= argument (probably not in Python 2.2)
 
 "return array('B', raw)" should be bytearray? (actually no)
 
-"typ != 'IDAT'" should not use a variable called "typ".
-
 Why have iteridat() and iterdecomp been renamed?

@@ -170,6 +170,7 @@ except ImportError:
 
 try:
     from itertools import imap as map
+
 except ImportError:
     #On Python 3 there is no imap, but map works like imap instead
     #On Python 2.2 simple map works not delayed, but works
@@ -2068,15 +2069,15 @@ class Reader:
         """Iterator that yields all the ``IDAT`` chunks as strings."""
         while True:
             try:
-                typ, data = self.chunk(lenient=lenient)
+                code, data = self.chunk(lenient=lenient)
             except ValueError as e:
                 raise ChunkError(e.args[0])
-            if typ == 'IEND':
+            if code == 'IEND':
                 # http://www.w3.org/TR/PNG/#11IEND
                 break
-            if typ != 'IDAT':
+            if code != 'IDAT':
                 continue
-            # typ == 'IDAT'
+            # code == 'IDAT'
             # http://www.w3.org/TR/PNG/#11IDAT
             if self.colormap and not self.plte:
                 warnings.warn("PLTE chunk is required before IDAT chunk")
