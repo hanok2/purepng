@@ -490,21 +490,20 @@ class BaseFilter:
         for i in range(len(result)):
             x = scanline[i]
             if ai < 0:
-                a = c = 0
+                pr = previous[i]  # a = c = 0
             else:
                 a = result[ai]
                 c = previous[ai]
-            b = previous[i]
-            p = a + b - c
-            pa = abs(p - a)
-            pb = abs(p - b)
-            pc = abs(p - c)
-            if pa <= pb and pa <= pc:
-                pr = a
-            elif pb <= pc:
-                pr = b
-            else:
-                pr = c
+                b = previous[i]
+                pa = abs(b - c)  # b
+                pb = abs(a - c)  # 0
+                pc = abs(a + b - c - c)  # b
+                if pa <= pb and pa <= pc:  # False
+                    pr = a
+                elif pb <= pc:  # True
+                    pr = b
+                else:
+                    pr = c
             result[i] = (x + pr) & 0xff
             ai += 1
 
@@ -513,24 +512,24 @@ class BaseFilter:
 
         # http://www.w3.org/TR/PNG/#9Filter-type-4-Paeth
         ai = -self.fu
+        previous = self.prev
         for i in range(len(result)):
             x = scanline[i]
             if ai < 0:
-                a = c = 0
+                pr = previous[i]  # a = c = 0
             else:
                 a = scanline[ai]
-                c = self.prev[ai]
-            b = self.prev[i]
-            p = a + b - c
-            pa = abs(p - a)
-            pb = abs(p - b)
-            pc = abs(p - c)
-            if pa <= pb and pa <= pc:
-                pr = a
-            elif pb <= pc:
-                pr = b
-            else:
-                pr = c
+                c = previous[ai]
+                b = previous[i]
+                pa = abs(b - c)
+                pb = abs(a - c)
+                pc = abs(a + b - c - c)
+                if pa <= pb and pa <= pc:
+                    pr = a
+                elif pb <= pc:
+                    pr = b
+                else:
+                    pr = c
             result[i] = (x - pr) & 0xff
             ai += 1
 
