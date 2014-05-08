@@ -26,10 +26,3 @@ use min() with a key= argument (probably not in Python 2.2)
 "typ != 'IDAT'" should not use a variable called "typ".
 
 Why have iteridat() and iterdecomp been renamed?
-
-in setup.py ...
-
-Instead of setupt I'd prefer "setuptools = False; try: import
-setuptools".
-
-Similarly, cythonize = False.  Hmm cythonize.

@@ -20,11 +20,11 @@ except ImportError:
     # http://docs.python.org/release/2.4.4/dist/setup-script.html
     from distutils.core import setup
 
+cythonize = False
 try:
     from Cython.Build import cythonize
-    cython = True
 except ImportError:
-    cython = False
+    cythonize = False  # just to be sure
 
 def get_version():
     from os.path import dirname, join
@@ -68,14 +68,14 @@ conf['download_url'] = \
 
 if __name__ == '__main__':
     if '--no-cython' in sys.argv:
-        cython = False
+        cythonize = False
         sys.argv.remove('--no-cython')
 
-    if cython:
+    if cythonize:
         from unimport import do_unimport
         cyth_ext = do_unimport(conf['package_dir'][''])
         conf['ext_modules'] = cythonize(cyth_ext)
 
     setup(**conf)
-    if cython:
+    if cythonize:
         os.remove(cyth_ext)
