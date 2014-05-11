@@ -1382,7 +1382,7 @@ class Filter(BaseFilter):
         return result
 
 
-def register_af_startegy(selector, name):
+def register_af_strategy(selector, name):
     """Register adaptive filter selection strategy for futher usage.
     'selector' - callable like def(lines, cfg, filter_obj)
         lines - list of lines filtered with default filters
@@ -1400,14 +1400,14 @@ def adapt_sum(lines, cfg, filter_obj):
     res_s = [sum(it) for it in lines]
     r = res_s.index(min(res_s))
     return lines[r]
-register_af_startegy(adapt_sum, 'sum')
+register_af_strategy(adapt_sum, 'sum')
 
 
 def adapt_entropy(lines, cfg, filter_obj):
     res_c = [len(set(it)) for it in lines]
     r = res_c.index(min(res_c))
     return lines[r]
-register_af_startegy(adapt_entropy, 'entropy')
+register_af_strategy(adapt_entropy, 'entropy')
 
 
 def from_array(a, mode=None, info={}):
@@ -1705,7 +1705,7 @@ class Reader:
         # Will be the first 8 bytes, later on.  See validate_signature.
         self.signature = None
         self.transparent = None
-        # A pair of (len,type) if a chunk has been read but its data and
+        # A pair of (len, chunk_type) if a chunk has been read but its data and
         # checksum have not (in other words the file position is just
         # past the 4 bytes that specify the chunk type).  See preamble
         # method for how this is used.
@@ -1732,13 +1732,13 @@ class Reader:
     def chunk(self, seek=None, lenient=False):
         """
         Read the next PNG chunk from the input file; returns a
-        (*type*,*data*) tuple.  *type* is the chunk's type as a string
-        (all PNG chunk types are 4 characters long).  *data* is the
-        chunk's data content, as a string.
+        (*chunk_type*, *data*) tuple.  *chunk_type* is the chunk's type
+        as a string (all PNG chunk types are 4 characters long).
+        *data* is the chunk's data content, as a string.
 
         If the optional `seek` argument is
         specified then it will keep reading chunks until it either runs
-        out of file or finds the type specified by the argument.  Note
+        out of file or finds the chunk_type specified by the argument.  Note
         that in general the order of chunks in PNGs is unspecified, so
         using `seek` can cause you to miss chunks.
 
@@ -1752,18 +1752,19 @@ class Reader:
             # http://www.w3.org/TR/PNG/#5Chunk-layout
             if not self.atchunk:
                 self.atchunk = self.chunklentype()
-            length,type = self.atchunk
+            length, chunk_type = self.atchunk
             self.atchunk = None
             data = self.file.read(length)
             if len(data) != length:
                 raise ChunkError('Chunk %s too short for required %i octets.'
-                  % (type, length))
+                  % (chunk_type, length))
             checksum = self.file.read(4)
             if len(checksum) != 4:
-                raise ValueError('Chunk %s too short for checksum.', type)
-            if seek and type != seek:
+                raise ValueError('Chunk %s too short for checksum.',
+                                 chunk_type)
+            if seek and chunk_type != seek:
                 continue
-            verify = zlib.crc32(strtobytes(type))
+            verify = zlib.crc32(strtobytes(chunk_type))
             verify = zlib.crc32(data, verify)
             # Whether the output from zlib.crc32 is signed or not varies
             # according to hideous implementation details, see
@@ -1775,12 +1776,13 @@ class Reader:
             if checksum != verify:
                 (a, ) = struct.unpack('!I', checksum)
                 (b, ) = struct.unpack('!I', verify)
-                message = "Checksum error in %s chunk: 0x%08X != 0x%08X." % (type, a, b)
+                message = "Checksum error in %s chunk: 0x%08X != 0x%08X." %\
+                                        (chunk_type, a, b)
                 if lenient:
                     warnings.warn(message, RuntimeWarning)
                 else:
                     raise ChunkError(message)
-            return type, data
+            return chunk_type, data
 
     def chunks(self):
         """Return an iterator that will yield each chunk as a
@@ -1964,8 +1966,8 @@ class Reader:
 
     def chunklentype(self):
         """Reads just enough of the input to determine the next
-        chunk's length and type, returned as a (*length*, *type*) pair
-        where *type* is a string.  If there are no more chunks, ``None``
+        chunk's length and type, returned as a (*length*, *chunk_type*) pair
+        where *chunk_type* is a string.  If there are no more chunks, ``None``
         is returned.
         """
 
@@ -1975,11 +1977,12 @@ class Reader:
         if len(x) != 8:
             raise FormatError(
               'End of file whilst reading chunk length and type.')
-        length,type = struct.unpack('!I4s', x)
-        type = bytestostr(type)
+        length, chunk_type = struct.unpack('!I4s', x)
+        chunk_type = bytestostr(chunk_type)
         if length > 2**31-1:
-            raise FormatError('Chunk %s is too large: %d.' % (type,length))
-        return length,type
+            raise FormatError('Chunk %s is too large: %d.' % (chunk_type,
+                                                              length))
+        return length, chunk_type
 
     def process_chunk(self, lenient=False):
         """Process the next chunk and its data.  This only processes the
@@ -1990,8 +1993,8 @@ class Reader:
         checksum failures will raise warnings rather than exceptions.
         """
 
-        type, data = self.chunk(lenient=lenient)
-        method = '_process_' + type
+        chunk_type, data = self.chunk(lenient=lenient)
+        method = '_process_' + chunk_type
         m = getattr(self, method, None)
         if m:
             m(data)
@@ -2107,15 +2110,15 @@ class Reader:
         """Iterator that yields all the ``IDAT`` chunks as strings."""
         while True:
             try:
-                code, data = self.chunk(lenient=lenient)
+                chunk_type, data = self.chunk(lenient=lenient)
             except ValueError as e:
                 raise ChunkError(e.args[0])
-            if code == 'IEND':
+            if chunk_type == 'IEND':
                 # http://www.w3.org/TR/PNG/#11IEND
                 break
-            if code != 'IDAT':
+            if chunk_type != 'IDAT':
                 continue
-            # code == 'IDAT'
+            # chunk_type == 'IDAT'
             # http://www.w3.org/TR/PNG/#11IDAT
             if self.colormap and not self.plte:
                 warnings.warn("PLTE chunk is required before IDAT chunk")
