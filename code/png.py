@@ -91,17 +91,18 @@ has RGB components:
 
 Boxed row flat pixel::
 
-  list([R,G,B, R,G,B, R,G,B],
+  iter([R,G,B, R,G,B, R,G,B],
        [R,G,B, R,G,B, R,G,B])
 
-Each row appears as its own list, but the pixels are flattened so
+Each row appears as its own sequence, but the pixels are flattened so
 that three values for one pixel simply follow the three values for
 the previous pixel.  This is the most common format used, because it
-provides a good compromise between space and convenience.  PyPNG regards
-itself as at liberty to replace any sequence type with any sufficiently
-compatible other sequence type; in practice each row is an array (from
-the array module), and the outer list is sometimes an iterator rather
-than an explicit list (so that streaming is possible).
+provides a good compromise between space and convenience.
+Row sequence supposed to be compatible with 'buffer' protocol in
+addition to standard sequence methods so 'buffer()' can be used to
+get fast per-byte access.
+All rows are contained in iterable or iterable-compatible container.
+(use 'iter()' to ensure)
 
 Flat row flat pixel::
 
@@ -221,6 +222,11 @@ except NameError:
 def bytearray_to_bytes(src):
     return bytes(src)
 
+
+def newHarray(length=0):
+    return array('H', [0]) * length
+
+
 # bytearray is faster than array('B'), so we prefer to use it
 # where available.
 try:
@@ -231,8 +237,8 @@ except NameError:
     def bytearray(src=[]):
         return array('B', src)
 
-    def newarray(length=0):
-        return array('B', [0] * length)
+    def newBarray(length=0):
+        return array('B', [0]) * length
 
     def bytearray_to_bytes(row):
         """Convert bytearray to bytes.  Recal that `row` will
@@ -252,7 +258,7 @@ except NameError:
 
 else:
     # bytearray exists (>= Python 2.6).
-    newarray = bytearray
+    newBarray = bytearray
     try:
         bytes
     except NameError:
@@ -541,7 +547,7 @@ class BaseFilter:
         # first line 'up' is the same as 'null', 'paeth' is the same
         # as 'sub', with only 'average' requiring any special case.
         if self.prev is None:
-            self.prev = newarray(len(line))
+            self.prev = newBarray(len(line))
 
         # Call appropriate filter algorithm.  Note that 0 has already
         # been dealt with.
@@ -576,7 +582,7 @@ class BaseFilter:
                 #return line
                 filter_type = 0
             elif filter_type == 3:
-                self.prev = newarray(len(line))
+                self.prev = newBarray(len(line))
             elif filter_type == 4:  # "paeth"
                 filter_type = 1
 
@@ -1807,8 +1813,10 @@ class Reader:
         # Make a result array, and make it big enough.  Interleaving
         # writes to the output array randomly (well, not quite), so the
         # entire output array must be in memory.
-        fmt = 'BH'[self.bitdepth > 8]
-        a = array(fmt, [0]*vpr*self.height)
+        if self.bitdepth > 8:
+            a = newHarray(vpr * self.height)
+        else:
+            a = newBarray(vpr * self.height)
         source_offset = 0
         filt = Filter(self.bitdepth * self.planes)
         for xstart, ystart, xstep, ystep in _adam7:
@@ -1853,11 +1861,7 @@ class Reader:
             or may not share with argument"""
 
             if self.bitdepth == 8:
-                # This is required to be an array('B') for
-                # various asDirect() conversions to work.
-                # Sadly, because raw is a bytearray() we need to
-                # convert, and it costs us 8% to do so.
-                return array('B', raw)
+                return raw
             if self.bitdepth == 16:
                 raw = bytearray_to_bytes(raw)
                 return array('H', struct.unpack('!%dH' % (len(raw)//2), raw))
@@ -1865,7 +1869,7 @@ class Reader:
             width = self.width
             # Samples per byte
             spb = 8//self.bitdepth
-            out = array('B')
+            out = newBarray()
             mask = 2**self.bitdepth - 1
             #                                      reversed range(spb)
             shifts = [self.bitdepth * it for it in range(spb - 1, -1, -1)]
@@ -1875,28 +1879,28 @@ class Reader:
 
         return map(asvalues, rows)
 
-    def serialtoflat(self, bytes, width=None):
+    def serialtoflat(self, raw, width=None):
         """Convert serial format (byte stream) pixel data to flat row
         flat pixel.
         """
 
         if self.bitdepth == 8:
-            return array('B', bytes)
+            return raw
         if self.bitdepth == 16:
-            bytes = bytearray_to_bytes(bytes)
+            raw = bytearray_to_bytes(raw)
             return array('H',
-              struct.unpack('!%dH' % (len(bytes)//2), bytes))
+              struct.unpack('!%dH' % (len(raw) // 2), raw))
         assert self.bitdepth < 8
         if width is None:
             width = self.width
         # Samples per byte
         spb = 8//self.bitdepth
-        out = array('B')
+        out = newBarray()
         mask = 2**self.bitdepth - 1
         #                                      reversed range(spb)
         shifts = [self.bitdepth * it for it in range(spb - 1, -1, -1)]
         l = width
-        for o in bytes:
+        for o in raw:
             out.extend([(mask&(o>>s)) for s in shifts][:l])
             l -= spb
             if l <= 0:
@@ -2273,7 +2277,7 @@ class Reader:
             def iterpal(pixels):
                 for row in pixels:
                     row = [plte[i] for i in row]
-                    yield array('B', itertools.chain(*row))
+                    yield bytearray(itertools.chain(*row))
             pixels = iterpal(pixels)
         elif self.trns:
             # It would be nice if there was some reasonable way
@@ -2288,7 +2292,12 @@ class Reader:
             planes = meta['planes']
             meta['alpha'] = True
             meta['planes'] += 1
-            typecode = 'BH'[meta['bitdepth']>8]
+            if meta['bitdepth'] > 8:
+                def wrap_array(row):
+                    return array('H', row)
+            else:
+                wrap_array = bytearray
+
             def itertrns(pixels):
                 for row in pixels:
                     # For each row we group it into pixels, then form a
@@ -2299,8 +2308,8 @@ class Reader:
                     row = group(row, planes)
                     opa = [maxval * (it != i) for i in row]
                     opa = zip(opa) # convert to 1-tuples
-                    yield array(typecode,
-                      itertools.chain(*list(map(operator.add, row, opa))))
+                    yield wrap_array(itertools.chain(*list(map(operator.add,
+                                                               row, opa))))
             pixels = itertrns(pixels)
         targetbitdepth = None
         if self.sbit:
@@ -2405,10 +2414,11 @@ class Reader:
         if not meta['greyscale']:
             return width,height,pixels,meta
         meta['greyscale'] = False
-        typecode = 'BH'[meta['bitdepth'] > 8]
+        newarray = (newBarray, newHarray)[meta['bitdepth'] > 8]
+
         def iterrgb():
             for row in pixels:
-                a = array(typecode, [0]) * 3 * width
+                a = newarray(3 * width)
                 for i in range(3):
                     a[i::3] = row
                 yield a
@@ -2427,15 +2437,16 @@ class Reader:
         width,height,pixels,meta = self.asDirect()
         if meta['alpha'] and not meta['greyscale']:
             return width,height,pixels,meta
-        typecode = 'BH'[meta['bitdepth'] > 8]
         maxval = 2**meta['bitdepth'] - 1
-        maxbuffer = struct.pack('=' + typecode, maxval) * 4 * width
-
-        def newarray():
-            return array(typecode, maxbuffer)
+        if meta['bitdepth'] > 8:
+            def newarray():
+                return array('H', [maxval]) * 4 * width
+        else:
+            def newarray():
+                return bytearray([maxval]) * 4 * width
 
         # Not best way, but we have only array of bytes accelerated now
-        if typecode == 'B':
+        if meta['bitdepth'] <= 8:
             filt = BaseFilter()
         else:
             filt = iBaseFilter()

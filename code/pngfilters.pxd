@@ -8,7 +8,7 @@ ctypedef unsigned char[::1] buf_arr
 cdef inline int len_ba(buf_arr line):
 	return line.shape[0]
 	
-cdef inline buf_arr newarray(int length):
+cdef inline buf_arr newBarray(int length):
 	cdef buf_arr res
 	cdef int i
 	#Seek for more effective view init (but without bytearrays)

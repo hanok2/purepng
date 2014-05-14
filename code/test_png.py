@@ -429,16 +429,18 @@ class Test(unittest.TestCase):
         pixels = list(pixels)
         self.assertEqual(len(pixels), 2)
         self.assertEqual(len(pixels[0]), 16)
-    def testInterlacedArray(self):
-        """Test that reading an interlaced PNG yields each row as an
-        array."""
+
+    def testInterlacedBuffer(self):
+        """Test that reading an interlaced PNG yields each row as
+        buffer-compatible type."""
         r = png.Reader(bytes=pngsuite.basi0g08)
-        list(r.read()[2])[0].tostring
-    def testTrnsArray(self):
+        buffer(list(r.read()[2])[0])
+
+    def testTrnsBuffer(self):
         """Test that reading a type 2 PNG with tRNS chunk yields each
-        row as an array (using asDirect)."""
+        row as buffer-compatible type (using asDirect)."""
         r = png.Reader(bytes=pngsuite.tbrn2c08)
-        list(r.asDirect()[2])[0].tostring
+        buffer(list(r.asDirect()[2])[0])
 
     # Invalid file format tests.  These construct various badly
     # formatted PNG files, then feed them into a Reader.  When
