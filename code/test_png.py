@@ -131,7 +131,7 @@ def seqtobytes(s):
 
 class Test(unittest.TestCase):
     # This member is used by the superclass.  If we don't define a new
-    # class here then when we use self.assertRaises() and the PyPNG code
+    # class here then when we use self.assertRaises() and the PurePNG code
     # raises an assertion then we get no proper traceback.  I can't work
     # out why, but defining a new class here means we get a proper
     # traceback.

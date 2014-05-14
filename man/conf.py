@@ -23,8 +23,8 @@ extensions = ['sphinx.ext.autodoc']
 templates_path = []
 source_suffix = '.rst'
 master_doc = 'index'
-project = u'PyPNG'
-copyright = u'2009, ' + conf['author']
+project = u'PurePNG'
+copyright = u'2014, ' + conf['author']
 release = conf['version']
 version = release[:release.rfind('.')]
 language='en'
@@ -37,7 +37,7 @@ exclude_trees = ['build']
 
 html_static_path = []
 html_last_updated_fmt = '%Y-%m-%dT%H:%M:%S'
-htmlhelp_basename = 'PyPNGdoc'
+htmlhelp_basename = 'PurePNGdoc'
 
 
 # Options for LaTeX output
@@ -52,7 +52,7 @@ latex_paper_size = 'a4'
 # Grouping the document tree into LaTeX files. List of tuples
 # (source start file, target name, title, author, document class [howto/manual]).
 latex_documents = [
-  ('index', 'PyPNG.tex', ur'PyPNG Documentation',
+  ('index', 'PurePNG.tex', ur'PurePNG Documentation',
    ur'David Jones', 'manual'),
 ]
 

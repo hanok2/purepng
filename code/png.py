@@ -66,7 +66,7 @@ Generally British English spelling is used in the documentation.  So
 that's "greyscale" and "colour".  This not only matches the author's
 native language, it's also used by the PNG specification.
 
-The major colour models supported by PNG (and hence by PyPNG) are:
+The major colour models supported by PNG (and hence by this module) are:
 greyscale, RGB, greyscale--alpha, RGB--alpha.  These are sometimes
 referred to using the abbreviations: L, RGB, LA, RGBA.  In this case
 each letter abbreviates a single channel: *L* is for Luminance or Luma
@@ -201,7 +201,7 @@ def group(s, n):
 
 def isarray(x):
     """Same as ``isinstance(x, array)`` except on Python 2.2, where it
-    always returns ``False``.  This helps PyPNG work on Python 2.2.
+    always returns ``False``.
     """
 
     try:
@@ -2514,8 +2514,8 @@ def isinteger(x):
 
 # === Legacy Version Support ===
 
-# :pyver:old:  PyPNG works on Python versions 2.3 and 2.2, but not
-# without some awkward problems.  Really PyPNG works on Python 2.4 (and
+# :pyver:old:  PurePNG works on Python versions 2.3 and 2.2, but not
+# without some awkward problems.  Really PurePNG works on Python 2.4 (and
 # above); it works on Pythons 2.3 and 2.2 by virtue of fixing up
 # problems here.  It's a bit ugly (which is why it's hidden down here).
 #

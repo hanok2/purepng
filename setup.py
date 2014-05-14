@@ -1,4 +1,4 @@
-# PyPNG setup.py
+# PurePNG setup.py
 # This is the setup.py script used by distutils.
 
 # You can install the png module into your Python distribution with:
@@ -35,22 +35,18 @@ def get_version():
     return version
 
 conf = dict(
-    name='pypng',
+    name='purepng',
     version=get_version(),
     description='Pure Python PNG image encoder/decoder',
     long_description="""
-PyPNG allows PNG image files to be read and written using pure Python.
+PurePNG allows PNG image files to be read and written using pure Python.
 
 It's available from github.com
-https://github.com/drj11/pypng
-
-Documentation is kindly hosted by PyPI
-http://pythonhosted.org/pypng/
-(and also available in the download tarball).
+https://github.com/scondo/purepng
 """,
-    author='David Jones',
-    author_email='drj@pobox.com',
-    url='https://github.com/drj11/pypng',
+    author='Pavel Zlatovratsky',
+    author_email='scondo@mail.ru',
+    url='https://github.com/scondo/purepng',
     package_dir={'':'code'},
     py_modules=['png'],
     classifiers=[
@@ -63,8 +59,6 @@ http://pythonhosted.org/pypng/
       'Operating System :: OS Independent',
       ],
     )
-conf['download_url'] = \
-  'https://github.com/drj11/pypng/archive/%(name)s-%(version)s.tar.gz' % conf
 
 if __name__ == '__main__':
     if '--no-cython' in sys.argv:

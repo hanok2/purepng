@@ -15,12 +15,13 @@ Get the latest git change hash::
 
 Set the PYPNG_VERSION variable (extracted from `code/png.py`):
 
-    . ./pypng-version
+   :TODO: Rework to cross-platform
 
 Add a tag for this release (the tags have this format so that
 the automatically generated tarballs from github.com have the
 right URL).
 
+   :TODO: Rework to cross-platform
     git tag -a pypng-$PYPNG_VERSION -m "PyPNG release $PYPNG_VERSION"
 
 and push:
@@ -31,7 +32,7 @@ Change to a directory where you can checkout a fresh copy of the sources
 into a subdirectory.  You can delete it later if you want.
 
 Checkout the particular revision of the source::
-
+   :TODO: Rework to cross-platform
     git clone git://github.com/drj11/pypng.git pypng-$PYPNG_VERSION
     cd pypng-$PYPNG_VERSION
     git checkout pypng-$PYPNG_VERSION
@@ -40,7 +41,7 @@ Checkout the particular revision of the source::
   
 Build the documentation (you will need sphinx installed)::
 
-    python build.py
+   :TODO: Rework to cross-platform
 
 Make source distribution using Python distutils::
 
@@ -75,5 +76,3 @@ cd back into your main development directory::
 
 Make a record in ``release/index.txt``
 
-Upload ``dist/pypng-$PYPNG_VERSION.tar.gz`` to github (this
-isn't necessary, right?).
