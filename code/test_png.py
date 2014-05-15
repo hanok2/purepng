@@ -33,8 +33,13 @@ import sys
 from png import strtobytes      # Don't do this at home.
 
 try:
+    buffer
+except NameError:
+    buffer = memoryview
+
+try:
     import logging
-    logging.getLogger().setLevel(logging.INFO)
+    #logging.getLogger().setLevel(logging.INFO)
 except ImportError:
     #Suppose to work in 2.2
     def warning(message):
