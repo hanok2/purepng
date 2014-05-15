@@ -178,7 +178,9 @@ except ImportError:
     pass
 
 __all__ = ['Image', 'Reader', 'Writer',
-           'register_af_strategy', 'write_chunks', 'from_array']
+           'Error', 'FormatError', 'ChunkError',
+           'Filter', 'register_af_strategy',
+           'write_chunks', 'from_array']
 
 
 # The PNG signature.
