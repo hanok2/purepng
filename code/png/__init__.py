@@ -3,6 +3,7 @@ try:
     #  Following methods are not parts of API and imports only for unittest
     from png import _main
     from png import strtobytes
+    from png import array
 except ImportError:
     _png = __import__(__name__ + '.png')
     _to_import = _png.png.__all__

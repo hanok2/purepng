@@ -11,6 +11,7 @@
 #   python -c 'import test_png;test_png.runTest()'
 # If you have nose installed you can use that:
 #   nosetests .
+from __future__ import generators
 
 # (For an in-memory binary file IO object) We use BytesIO where
 # available, otherwise we use StringIO, but name it BytesIO.
@@ -24,7 +25,11 @@ import struct
 import unittest
 import zlib
 
-from array import array
+try:
+    from png import array
+except ImportError:
+    # It's not worth add array to Py3 import when no need for hacks
+    from array import array
 
 import png
 import pngsuite
@@ -132,7 +137,7 @@ def seqtobytes(s):
     plastering over Python 2 / Python 3 cracks.
     """
 
-    return strtobytes(''.join(chr(x) for x in s))
+    return strtobytes(''.join([chr(x) for x in s]))
 
 class Test(unittest.TestCase):
     # This member is used by the superclass.  If we don't define a new
@@ -315,7 +320,7 @@ class Test(unittest.TestCase):
         _redirect_io(s, o, do)
         r = png.Reader(bytes=o.getvalue())
         x,y,pixels,meta = r.read()
-        self.assertTrue(r.greyscale)
+        self.assertEqual(r.greyscale, True)
         self.assertEqual(r.bitdepth, 2)
     def testPAMin(self):
         """Test that the command line tool can read PAM file."""
@@ -334,8 +339,8 @@ class Test(unittest.TestCase):
         _redirect_io(s, o, do)
         r = png.Reader(bytes=o.getvalue())
         x,y,pixels,meta = r.read()
-        self.assertTrue(r.alpha)
-        self.assertTrue(not r.greyscale)
+        self.assertEqual(r.alpha, True)
+        self.assertEqual(not r.greyscale,True)
         self.assertEqual(list(itertools.chain(*pixels)), flat)
     def testLA4(self):
         """Create an LA image with bitdepth 4."""
@@ -349,7 +354,7 @@ class Test(unittest.TestCase):
         x,y,pixels,info = r.read()
         self.assertEqual(x, 32)
         self.assertEqual(y, 32)
-        self.assertTrue('palette' in info)
+        self.assertEqual('palette' in info, True)
     def testPalWrite(self):
         """Test metadata for paletted PNG can be passed from one PNG
         to another."""
@@ -410,8 +415,8 @@ class Test(unittest.TestCase):
         w.write_packed(o, pixels)
         r = png.Reader(bytes=o.getvalue())
         x,y,pixels,meta = r.asDirect()
-        self.assertTrue(meta['alpha'])
-        self.assertTrue(meta['greyscale'])
+        self.assertEqual(meta['alpha'], True)
+        self.assertEqual(meta['greyscale'], True)
         self.assertEqual(meta['bitdepth'], 1)
     def testWinfo(self):
         """Test the dictionary returned by a `read` method can be used

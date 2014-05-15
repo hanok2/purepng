@@ -153,6 +153,10 @@ try: # See :pyver:old
     import itertools
 except ImportError:
     pass
+try:
+    from itertools import tee
+except ImportError:
+    tee = None
 import math
 # http://www.python.org/doc/2.4.4/lib/module-operator.html
 import operator
@@ -161,7 +165,6 @@ import sys
 import zlib
 # http://www.python.org/doc/2.4.4/lib/module-warnings.html
 import warnings
-import copy
 
 try:
     from functools import reduce
@@ -1310,7 +1313,7 @@ class Filter(BaseFilter):
 
         lines = [None] * 5
         for filter_type in range(5):  # range save more than 'optimised' order
-            res = copy.copy(line)
+            res = bytearray(line)
             self.filter_scanline(filter_type, line, res)
             res.insert(0, filter_type)
             lines[filter_type] = res
@@ -1356,7 +1359,7 @@ class Filter(BaseFilter):
 
         line = bytearray(line)
         if isinstance(filter_type, int):
-            res = copy.copy(line)
+            res = bytearray(line)
             self.filter_scanline(filter_type, line, res)
             res.insert(0, filter_type)  # Add filter type as the first byte
         else:
@@ -1378,14 +1381,14 @@ class Filter(BaseFilter):
         """
 
         if filter_type == 0:
-            self.prev = copy.copy(scanline)
+            self.prev = bytearray(scanline)
             return scanline
 
         if filter_type not in (1, 2, 3, 4):
             raise FormatError('Invalid PNG Filter Type.'
               '  See http://www.w3.org/TR/2003/REC-PNG-20031110/#9Filters .')
 
-        result = copy.copy(scanline)
+        result = bytearray(scanline)
         self.unfilter_scanline(filter_type, scanline, result)
         return result
 
@@ -1410,11 +1413,18 @@ def adapt_sum(lines, cfg, filter_obj):
     return lines[r]
 register_af_strategy(adapt_sum, 'sum')
 
-
-def adapt_entropy(lines, cfg, filter_obj):
-    res_c = [len(set(it)) for it in lines]
-    r = res_c.index(min(res_c))
-    return lines[r]
+try:
+    set
+except NameError:
+    def adapt_entropy(lines, cfg, filter_obj):
+        res_c = [len(dict.fromkeys(it)) for it in lines]
+        r = res_c.index(min(res_c))
+        return lines[r]
+else:
+    def adapt_entropy(lines, cfg, filter_obj):
+        res_c = [len(set(it)) for it in lines]
+        r = res_c.index(min(res_c))
+        return lines[r]
 register_af_strategy(adapt_entropy, 'entropy')
 
 
@@ -1579,7 +1589,7 @@ def from_array(a, mode=None, info={}):
     # In order to work out whether we the array is 2D or 3D we need its
     # first row, which requires that we take a copy of its iterator.
     # We may also need the first row to derive width and bitdepth.
-    a,t = itertools.tee(a)
+    a, t = tee(a)
     row = next(t)
     del t
     try:
@@ -2571,6 +2581,27 @@ except TypeError:
             if type(init) == str:
                 return map(ord, init)
             return list(init)
+
+    # Original array initialisation is faster but multiplication change class
+    def newBarray(length=0):
+        return array('B', [0] * length)
+
+    def newHarray(length=0):
+        return array('H', [0] * length)
+
+if tee is None:  # There is no tee before Python 2.4
+    def tee(iterable, n=2):
+        it = iter(iterable)
+        deques = [list() for i in range(n)]
+
+        def gen(mydeque):
+            while True:
+                if not mydeque:             # when the local deque is empty
+                    newval = next(it)       # fetch a new value and
+                    for d in deques:        # load it to all the deques
+                        d.append(newval)
+                yield mydeque.pop(0)
+        return tuple([gen(d) for d in deques])
 
 # Further hacks to get it limping along on Python 2.2
 try:
