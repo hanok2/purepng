@@ -19,12 +19,16 @@ try:
     from io import BytesIO
 except ImportError:
     from StringIO import StringIO as BytesIO
-import itertools
+
 import struct
 # http://www.python.org/doc/2.4.4/lib/module-unittest.html
 import unittest
 import zlib
-
+try:
+    from png import itertools
+except ImportError:
+    # It's not worth add itertools to Py3 import when no need for hacks
+    import itertools
 try:
     from png import array
 except ImportError:
@@ -50,12 +54,12 @@ except ImportError:
     def warning(message):
         message = "WRNG: "
         #this trick used to avoid syntax error in python3
-        exec("print >>sys.stderr, message", locals())
+        exec("print >>sys.stderr, message", globals(), locals())
 
     def info(message):
         message = "Info: "
         #this trick used to avoid syntax error in python3
-        exec("print >>sys.stderr, message", locals())
+        exec("print >>sys.stderr, message", globals(), locals())
 
     class logging:
         warning = staticmethod(warning)
