@@ -24,11 +24,13 @@ import struct
 # http://www.python.org/doc/2.4.4/lib/module-unittest.html
 import unittest
 import zlib
+import itertools
+
 try:
-    from png import itertools
+    from itertool import izip as zip
 except ImportError:
-    # It's not worth add itertools to Py3 import when no need for hacks
-    import itertools
+    pass
+
 try:
     from png import array
 except ImportError:
@@ -690,3 +692,16 @@ class Test(unittest.TestCase):
 
         out = filter_.undo_filter(scanline[0], scanline[1:])
         self.assertEqual(list(out), [8, 10, 9, 108, 111, 113])  # paeth
+
+    def testModifyRows(self):
+        # Tests that the rows yielded by the pixels generator
+        # can be safely modified.
+        k = 'f02n0g08'
+        r1 = png.Reader(bytes=pngsuite.png[k])
+        r2 = png.Reader(bytes=pngsuite.png[k])
+        _, _, pixels1, info1 = r1.asDirect()
+        _, _, pixels2, info2 = r2.asDirect()
+        for row1, row2 in zip(pixels1, pixels2):
+            self.assertEqual(row1, row2)
+            for i in range(len(row1)):
+                row1[i] = 11117 % (i + 1)
