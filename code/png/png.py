@@ -48,8 +48,7 @@ For help, type ``import png; help(png)`` in your python interpreter.
 A good place to start is the :class:`Reader` and :class:`Writer`
 classes.
 
-Requires Python 2.3.  Limited support is available for Python 2.2, but
-not everything works.  Best with Python 2.4 and higher.  Installation is
+Requires Python 2.3.  Best with Python 2.4 and higher.  Installation is
 trivial, but see the ``README.txt`` file (with the source distribution)
 for details.
 
@@ -143,17 +142,13 @@ And now, my famous members
 --------------------------
 """
 
-# http://www.python.org/doc/2.2.3/whatsnew/node5.html
-from __future__ import generators
-
 __version__ = "0.0.16"
 
 from array import array
-try: # See :pyver:old
-    import itertools
-except ImportError:
-    pass
-try:
+import itertools
+import logging
+
+try:  # See :pyver:old
     from itertools import tee
 except ImportError:
     tee = None
@@ -177,7 +172,6 @@ try:
 
 except ImportError:
     #On Python 3 there is no imap, but map works like imap instead
-    #On Python 2.2 simple map works not delayed, but works
     pass
 
 __all__ = ['Image', 'Reader', 'Writer',
@@ -204,16 +198,6 @@ def group(s, n):
     return list(zip(*[iter(s)] * n))
 
 
-def isarray(x):
-    """Same as ``isinstance(x, array)`` except on Python 2.2, where it
-    always returns ``False``.
-    """
-
-    try:
-        return isinstance(x, array)
-    except TypeError:
-        # Because on Python 2.2 array.array is not a type.
-        return False
 try:
     next
 except NameError:
@@ -250,16 +234,6 @@ except NameError:
         actually be an ``array``.
         """
         return row.tostring()
-
-    try:  # see :pyver:old
-        array.tostring
-    except AttributeError:
-        # The above definition of bytearray_to_bytes doesn't
-        # work when array.tostring doesn't exist. :todo:(drj)
-        # What versions of Python is that then?
-        def bytearray_to_bytes(row):
-            l = len(row)
-            return struct.pack('%dB' % l, *row)
 
 else:
     # bytearray exists (>= Python 2.6).
@@ -1689,7 +1663,7 @@ class _readable:
 
     def read(self, n):
         r = self.buf[self.offset:self.offset+n]
-        if isarray(r):
+        if isinstance(r, array):
             r = r.tostring()
         self.offset += n
         return r
@@ -1730,7 +1704,7 @@ class Reader:
         self.atchunk = None
 
         if _guess is not None:
-            if isarray(_guess):
+            if isinstance(_guess, array):
                 kw["bytes"] = _guess
             elif isinstance(_guess, str):
                 kw["filename"] = _guess
@@ -2527,18 +2501,13 @@ def isinteger(x):
 
 # === Legacy Version Support ===
 
-# :pyver:old:  PurePNG works on Python versions 2.3 and 2.2, but not
-# without some awkward problems.  Really PurePNG works on Python 2.4 (and
-# above); it works on Pythons 2.3 and 2.2 by virtue of fixing up
+# :pyver:old:  PurePNG works on Python versions 2.3  Really PurePNG works
+# on Python 2.4 (and  above); it works on Pythons 2.3 by virtue of fixing up
 # problems here.  It's a bit ugly (which is why it's hidden down here).
 #
 # Generally the strategy is one of pretending that we're running on
 # Python 2.4 (or above), and patching up the library support on earlier
-# versions so that it looks enough like Python 2.4.  When it comes to
-# Python 2.2 there is one thing we cannot patch: extended slices
-# http://www.python.org/doc/2.3/whatsnew/section-slices.html.
-# Instead we simply declare that features that are implemented using
-# extended slices will not work on Python 2.2.
+# versions so that it looks enough like Python 2.4.
 #
 # In order to work on Python 2.3 we fix up a recurring annoyance involving
 # the array type.  In Python 2.3 an array cannot be initialised with an
@@ -2546,41 +2515,32 @@ def isinteger(x):
 # Both of those are repeated issues in the code.  Whilst I would not
 # normally tolerate this sort of behaviour, here we "shim" a replacement
 # for array into place (and hope no-one notices).  You never read this.
-#
-# In an amusing case of warty hacks on top of warty hacks... the array
-# shimming we try and do only works on Python 2.3 and above (you can't
-# subclass array.array in Python 2.2).  So to get it working on Python
-# 2.2 we go for something much simpler and (probably) way slower.
+
 try:
     array('B').extend([])
     array('B', array('B'))
 except TypeError:
     # Expect to get here on Python 2.3
-    try:
-        class _array_shim(array):
-            true_array = array
-            def __new__(cls, typecode, init=None):
-                super_new = super(_array_shim, cls).__new__
-                it = super_new(cls, typecode)
-                if init is None:
-                    return it
-                it.extend(init)
+    class _array_shim(array):
+        true_array = array
+
+        def __new__(cls, typecode, init=None):
+            super_new = super(_array_shim, cls).__new__
+            it = super_new(cls, typecode)
+            if init is None:
                 return it
-            def extend(self, extension):
-                super_extend = super(_array_shim, self).extend
-                if isinstance(extension, self.true_array):
-                    return super_extend(extension)
-                if not isinstance(extension, (list, str)):
-                    # Convert to list.  Allows iterators to work.
-                    extension = list(extension)
-                return super_extend(self.true_array(self.typecode, extension))
-        array = _array_shim
-    except TypeError:
-        # Expect to get here on Python 2.2
-        def array(typecode, init=()):
-            if type(init) == str:
-                return map(ord, init)
-            return list(init)
+            it.extend(init)
+            return it
+
+        def extend(self, extension):
+            super_extend = super(_array_shim, self).extend
+            if isinstance(extension, self.true_array):
+                return super_extend(extension)
+            if not isinstance(extension, (list, str)):
+                # Convert to list.  Allows iterators to work.
+                extension = list(extension)
+            return super_extend(self.true_array(self.typecode, extension))
+    array = _array_shim
 
     # Original array initialisation is faster but multiplication change class
     def newBarray(length=0):
@@ -2603,39 +2563,6 @@ if tee is None:  # There is no tee before Python 2.4
                 yield mydeque.pop(0)
         return tuple([gen(d) for d in deques])
 
-# Further hacks to get it limping along on Python 2.2
-try:
-    enumerate
-except NameError:
-    def enumerate(seq):
-        i=0
-        for x in seq:
-            yield i,x
-            i += 1
-
-
-try:
-    itertools
-except NameError:
-    class _dummy_itertools:
-        pass
-    itertools = _dummy_itertools()
-    def _itertools_chain(*iterables):
-        for it in iterables:
-            for element in it:
-                yield element
-    itertools.chain = _itertools_chain
-
-try:
-    import logging
-except ImportError:
-    #Suppose to work in 2.2
-    def error(message):
-        #this trick used to avoid syntax error in python3
-        exec("print >>sys.stderr, message", locals())
-
-    class logging:
-        error = staticmethod(error)
 
 # === Command Line Support ===
 
