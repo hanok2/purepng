@@ -420,22 +420,21 @@ class BaseFilter:
     for this compilation, so don't just rename it.
     '''
 
-    def __init__(self, bitdepth=8, interlace=None, rows=None, prev=None):
+    def __init__(self, bitdepth=8):
         if bitdepth > 8:
             self.fu = bitdepth // 8
         else:
             self.fu = 1
 
-    def __undo_filter_sub(self, scanline, result):
+    def __undo_filter_sub(self, scanline):
         """Undo sub filter."""
 
         ai = 0
-        # Loops starts at index fu.  Observe that the initial part
-        # of the result is already filled in correctly with scanline.
-        for i in range(self.fu, len(result)):
+        # Loops starts at index fu.
+        for i in range(self.fu, len(scanline)):
             x = scanline[i]
-            a = result[ai]
-            result[i] = (x + a) & 0xff
+            a = scanline[ai]  # result
+            scanline[i] = (x + a) & 0xff  # result
             ai += 1
 
     def __do_filter_sub(self, scanline, result):
@@ -448,13 +447,13 @@ class BaseFilter:
             result[i] = (x - a) & 0xff
             ai += 1
 
-    def __undo_filter_up(self, scanline, result):
+    def __undo_filter_up(self, scanline):
         """Undo up filter."""
         previous = self.prev
-        for i in range(len(result)):
+        for i in range(len(scanline)):
             x = scanline[i]
             b = previous[i]
-            result[i] = (x + b) & 0xff
+            scanline[i] = (x + b) & 0xff  # result
 
     def __do_filter_up(self, scanline, result):
         """Up filter."""
@@ -464,19 +463,19 @@ class BaseFilter:
             b = self.prev[i]
             result[i] = (x - b) & 0xff
 
-    def __undo_filter_average(self, scanline, result):
+    def __undo_filter_average(self, scanline):
         """Undo average filter."""
 
         ai = -self.fu
         previous = self.prev
-        for i in range(len(result)):
+        for i in range(len(scanline)):
             x = scanline[i]
             if ai < 0:
                 a = 0
             else:
-                a = result[ai]
+                a = scanline[ai]  # result
             b = previous[i]
-            result[i] = (x + ((a + b) >> 1)) & 0xff
+            scanline[i] = (x + ((a + b) >> 1)) & 0xff  # result
             ai += 1
 
     def __do_filter_average(self, scanline, result):
@@ -493,17 +492,17 @@ class BaseFilter:
             result[i] = (x - ((a + b) >> 1)) & 0xff
             ai += 1
 
-    def __undo_filter_paeth(self, scanline, result):
+    def __undo_filter_paeth(self, scanline):
         """Undo Paeth filter."""
 
         ai = -self.fu
         previous = self.prev
-        for i in range(len(result)):
+        for i in range(len(scanline)):
             x = scanline[i]
             if ai < 0:
                 pr = previous[i]  # a = c = 0
             else:
-                a = result[ai]
+                a = scanline[ai]  # result
                 c = previous[ai]
                 b = previous[i]
                 pa = abs(b - c)  # b
@@ -515,7 +514,7 @@ class BaseFilter:
                     pr = b
                 else:
                     pr = c
-            result[i] = (x + pr) & 0xff
+            scanline[i] = (x + pr) & 0xff  # result
             ai += 1
 
     def __do_filter_paeth(self, scanline, result):
@@ -544,30 +543,32 @@ class BaseFilter:
             result[i] = (x - pr) & 0xff
             ai += 1
 
-    def unfilter_scanline(self, filter_type, line, result):
+    def unfilter_scanline(self, filter_type, line):
         """Undo the filter for a scanline."""
 
-        # For the first line of a pass, synthesize a dummy previous
-        # line.  An alternative approach would be to observe that on the
-        # first line 'up' is the same as 'null', 'paeth' is the same
-        # as 'sub', with only 'average' requiring any special case.
+        # For the first line of a pass, synthesize a dummy previous line.
         if self.prev is None:
             self.prev = newBarray(len(line))
+            # Also it's possible to switch some filters to easier
+            if filter_type == 2:  # "up"
+                filter_type = 0
+            elif filter_type == 4:  # "paeth"
+                filter_type = 1
 
-        # Call appropriate filter algorithm.  Note that 0 has already
-        # been dealt with.
+        # Call appropriate filter algorithm.
+        # 0 - do nothing
         if filter_type == 1:
-            self.__undo_filter_sub(line, result)
+            self.__undo_filter_sub(line)
         elif filter_type == 2:
-            self.__undo_filter_up(line, result)
+            self.__undo_filter_up(line)
         elif filter_type == 3:
-            self.__undo_filter_average(line, result)
+            self.__undo_filter_average(line)
         elif filter_type == 4:
-            self.__undo_filter_paeth(line, result)
+            self.__undo_filter_paeth(line)
 
         # This will not work writing cython attributes from python
         # Only 'cython from cython' or 'python from python'
-        self.prev[:] = result
+        self.prev[:] = line[:]
 
     def filter_scanline(self, filter_type, line, result):
         """Apply a scanline filter to a scanline.
@@ -1293,7 +1294,7 @@ def write_chunks(out, chunks):
 
 class Filter(BaseFilter):
     def __init__(self, bitdepth=8, interlace=None, rows=None, prev=None):
-        BaseFilter.__init__(self, bitdepth, interlace, rows, prev)
+        BaseFilter.__init__(self, bitdepth)
         if prev is None:
             self.prev = None
         else:
@@ -1376,8 +1377,8 @@ class Filter(BaseFilter):
         """Undo the filter for a scanline.  `scanline` is a sequence of
         bytes that does not include the initial filter type byte.
 
-        The scanline will have the effects of filtering removed, and the
-        result will be returned as a fresh sequence of bytes.
+        The scanline will have the effects of filtering removed.
+        Scanline modified inplace and also returned as result.
         """
 
         if filter_type == 0:
@@ -1388,9 +1389,8 @@ class Filter(BaseFilter):
             raise FormatError('Invalid PNG Filter Type.'
               '  See http://www.w3.org/TR/2003/REC-PNG-20031110/#9Filters .')
 
-        result = bytearray(scanline)
-        self.unfilter_scanline(filter_type, scanline, result)
-        return result
+        self.unfilter_scanline(filter_type, scanline)
+        return scanline
 
 
 def register_af_strategy(selector, name):
