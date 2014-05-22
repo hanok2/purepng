@@ -203,11 +203,14 @@ try:
 except NameError:
     def next(it):
         return it.next()
+try:
+    bytes
+except NameError:
+    bytes = str
 
 # Define a bytearray_to_bytes() function.
 # The definition of this function changes according to what
 # version of Python we are on. This is the canonical version
-# (when both the bytearray and bytes types exist):
 def bytearray_to_bytes(src):
     return bytes(src)
 
@@ -219,7 +222,8 @@ def newHarray(length=0):
 # bytearray is faster than array('B'), so we prefer to use it
 # where available.
 try:
-    bytearray
+    # bytearray exists (>= Python 2.6).
+    newBarray = bytearray
 except NameError:
     # bytearray does not exist. We're probably < Python 2.6 (the
     # version in which bytearray appears).
@@ -235,16 +239,6 @@ except NameError:
         """
         return row.tostring()
 
-else:
-    # bytearray exists (>= Python 2.6).
-    newBarray = bytearray
-    try:
-        bytes
-    except NameError:
-        # bytearray exists, but bytes does not. :todo:(drj) when
-        # do we get here?
-        def bytearray_to_bytes(src):
-            return str(src)
 
 # Python 3 workaround
 try:
@@ -1092,7 +1086,7 @@ class Writer:
         if len(data):
             compressed = compressor.compress(bytearray_to_bytes(data))
         else:
-            compressed = ''
+            compressed = bytes()
         flushed = compressor.flush()
         if len(compressed) or len(flushed):
             yield compressed + flushed
@@ -1242,7 +1236,7 @@ class Writer:
                             pixels[offset+i:end_offset:skip]
                     yield row
 
-def write_chunk(outfile, tag, data=strtobytes('')):
+def write_chunk(outfile, tag, data=bytes()):
     """
     Write a PNG chunk to the output file, including length and
     checksum.
@@ -2666,7 +2660,7 @@ def read_pnm_header(infile, supported=('P5','P6')):
         # This is bonkers; I've never seen it; and it's a bit awkward to
         # code good lexers in Python (no goto).  So we break on such
         # cases.
-        token = strtobytes('')
+        token = bytes()
         while c.isdigit():
             token += c
             c = getc()
