@@ -1900,17 +1900,19 @@ class Reader:
         that yields the raw bytes in chunks of arbitrary size.
         """
 
-        # length of row, in bytes
-        rb = self.row_bytes
+        # length of row, in bytes (with filter)
+        rb_1 = self.row_bytes + 1
         a = bytearray()
         filt = Filter(self.bitdepth * self.planes)
         for some in raw:
             a.extend(some)
-            while len(a) >= rb + 1:
-                filter_type = a[0]
-                scanline = a[1:rb + 1]
-                del a[:rb + 1]
+            offset = 0
+            while len(a) >= rb_1 + offset:
+                filter_type = a[offset]
+                scanline = a[offset + 1:offset + rb_1]
                 yield filt.undo_filter(filter_type, scanline)
+                offset += rb_1
+            del a[:offset]
 
         if len(a) != 0:
             # :file:format We get here with a file format error:
