@@ -43,10 +43,21 @@ import sys
 
 from png import strtobytes      # Don't do this at home.
 
+def buf_emu(not_buffer):
+    if hasattr(not_buffer, 'tostring'):
+        return not_buffer.tostring()
+    else:
+        try:
+            return bytes(not_buffer)
+        except NameError:
+            return str(not_buffer)
 try:
     buffer
 except NameError:
-    buffer = memoryview
+    try:
+        buffer = memoryview
+    except NameError:
+        buffer = buf_emu
 
 try:
     import logging
