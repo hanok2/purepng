@@ -198,6 +198,17 @@ def group(s, n):
     return list(zip(*[iter(s)] * n))
 
 
+def _rel_import(module, tgt):
+    '''Using relative import in both Python 2 and Python 3
+    '''
+    try:
+        exec("from ." + module + " import " + tgt, globals(), locals())
+    except SyntaxError:
+    # On Python < 2.5 relative import cause syntax error
+        exec("from " + module + " import " + tgt, globals(), locals())
+    return eval(tgt)
+
+
 try:
     next
 except NameError:
@@ -513,7 +524,7 @@ class BaseFilter:
 
     def unfilter_scanline(self, filter_type, line):
         """Undo the filter for a scanline."""
-
+        assert 0 <= filter_type <= 4
         # For the first line of a pass, synthesize a dummy previous line.
         if self.prev is None:
             self.prev = newBarray(len(line))
@@ -596,8 +607,9 @@ class BaseFilter:
 
 iBaseFilter = BaseFilter  # 'i' means 'internal'
 try:
-    from pngfilters import BaseFilter
+    BaseFilter = _rel_import('pngfilters', 'BaseFilter')
 except ImportError:
+    # Restore if something went wrong
     BaseFilter = iBaseFilter
 
 
@@ -1814,9 +1826,12 @@ class Reader:
                 filter_type = raw[source_offset]
                 scanline = raw[source_offset + 1:source_offset + row_size + 1]
                 source_offset += (row_size + 1)
-                recon = filt.undo_filter(filter_type, scanline)
+                if filter_type not in (0, 1, 2, 3, 4):
+                    raise FormatError('Invalid PNG Filter Type.'
+                '  See http://www.w3.org/TR/2003/REC-PNG-20031110/#9Filters .')
+                filt.unfilter_scanline(filter_type, scanline)
                 # Convert so that there is one element per pixel value
-                flat = self.serialtoflat(recon, ppr)
+                flat = self.serialtoflat(scanline, ppr)
                 if xstep == 1:
                     assert xstart == 0
                     offset = y * vpr
@@ -1903,8 +1918,12 @@ class Reader:
             offset = 0
             while len(a) >= rb_1 + offset:
                 filter_type = a[offset]
+                if filter_type not in (0, 1, 2, 3, 4):
+                    raise FormatError('Invalid PNG Filter Type.'
+                '  See http://www.w3.org/TR/2003/REC-PNG-20031110/#9Filters .')
                 scanline = a[offset + 1:offset + rb_1]
-                yield filt.undo_filter(filter_type, scanline)
+                filt.unfilter_scanline(filter_type, scanline)
+                yield scanline
                 offset += rb_1
             del a[:offset]
 
