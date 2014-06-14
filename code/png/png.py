@@ -2329,7 +2329,8 @@ class Reader:
             meta['bitdepth'] = targetbitdepth
             def itershift(pixels):
                 for row in pixels:
-                    yield [it >> shift for it in row]
+                    yield array('BH'[targetbitdepth > 8],
+                                [it >> shift for it in row])
             pixels = itershift(pixels)
         return x,y,pixels,meta
 
@@ -2359,7 +2360,8 @@ class Reader:
         meta['bitdepth'] = targetbitdepth
         def iterscale():
             for row in pixels:
-                yield [int(round(x * factor)) for x in row]
+                yield array('BH'[targetbitdepth > 8],
+                            [int(round(x * factor)) for x in row])
         if maxval == targetmaxval:
             return width, height, pixels, meta
         else:
