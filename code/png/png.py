@@ -206,6 +206,10 @@ def _rel_import(module, tgt):
     except SyntaxError:
     # On Python < 2.5 relative import cause syntax error
         exec("from " + module + " import " + tgt, globals(), locals())
+    except ValueError:
+        #relative import in non-package is ValueError, re-raise as ImportError
+        #TODO: check error
+        raise ImportError
     return eval(tgt)
 
 
