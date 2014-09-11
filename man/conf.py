@@ -9,7 +9,7 @@
 import sys, os
 
 # So that local modules get picked up, and picked up first.
-sys.path.insert(0, os.path.abspath('../code'))
+sys.path.insert(0, os.path.abspath('../code/png'))
 # So that setup.py can be picked up and used for its conf member
 sys.path.insert(0, os.path.abspath('..'))
 

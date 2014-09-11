@@ -1,8 +1,8 @@
 .. $URL$
 .. $Rev$
 
-PyPNG documentation
-===================
+PurePNG documentation
+=====================
 
 Contents:
 
@@ -12,6 +12,8 @@ Contents:
    ca
    ex
    png
+   cython
+   roadmap
 
 Reports:
 
@@ -19,7 +21,6 @@ Reports:
    :maxdepth: 1
 
    chunk
-   tr20091230
 
 Indices and tables
 ==================

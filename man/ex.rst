@@ -1,7 +1,7 @@
 .. $URL$
 .. $Rev$
 
-PyPNG Code Examples
+PurePNG Code Examples
 ===================
 
 
