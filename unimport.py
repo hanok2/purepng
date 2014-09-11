@@ -34,4 +34,4 @@ def do_unimport(folder=''):
     return join(folder, 'pngfilters.py')
 
 if __name__ == "__main__":
-    do_unimport('code')
+    do_unimport('code/png')

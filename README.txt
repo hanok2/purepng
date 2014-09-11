@@ -1,15 +1,14 @@
-README for PyPNG
-drj@pobox.com
+README for PurePNG
+scondo@pobox.com
 
 
 INTRODUCTION
 
-PyPNG provides Python code for encoding/decoding PNG files.  In
+PurePNG provides Python code for encoding/decoding PNG files.  In
 particular png.py is a Python module written entirely in Python.
 
-PyPNG home page: http://github.com/drj11/pypng/
-PyPNG Documentation: http://packages.python.org/pypng/
-PyPNG mailing list: http://groups.google.com/group/pypng-users
+
+PurePNG home page: http://github.com/scondo/purepng/
 
 
 QUICK START
@@ -25,14 +24,10 @@ no good then you could try the ReST sources in the man/ directory.
 
 INSTALLATION
 
-PyPNG requires Python version 2.3 (and that's all), or any compatible
-higher version.  It works best on Python 2.4 and above.  It can be used
-on Python 2.2, but some things do not work.
+PurePNG requires Python version 2.3 (and that's all), or any compatible
+higher version(incl. Python 3).  It works best on Python 2.4 and above. 
 
-PyPNG also works on Python 3.x if you use the 2to3 tool which it should
-do automatically (this support is very recent, and preliminary).
-
-PyPNG comes with a setup.py script to use with distutils.  After
+PurePNG comes with a setup.py script to use with distutils.  After
 unpacking the distribution, cd into the directory and execute the
 command:
 
@@ -41,19 +36,43 @@ python setup.py install
 The png module will be installed; "import png" will allow you to use it
 from your Python programs.
 
-Alternatively, you can copy code/png.py wherever you like.  It's intended
-that you can copy png.py into your application and distribute it.  The
-following "curl" command should copy the latest version into your
+Alternatively, you can copy code/png/png.py wherever you like.
+It's intended that you can copy png.py into your application and distribute
+it. The following "curl" command should copy the latest version into your
 current directory:
 
-curl -O https://raw.github.com/drj11/pypng/master/code/png.py
+curl -O https://raw.github.com/scondo/purepng/master/code/png.py
+
+
+MIGRATION FROM PYPNG
+
+PurePNG is successor of PyPNG - nice and simple module to work with png.
+
+If you work with PyPNG in most cases you can use PurePNG as drop-in replace,
+but few things are changed:
+
+* Rows in boxed flat row now may be any buffer-compatible, not only array.
+  Use str(buffer(row)) instead of 'tostring' method or memoryview(row).
+  
+* Python 2.2 support removed. Too much important features (like deinterlace)
+  fails on Python 2.2. Now all version should pass all tests.
+  
+* Work with Netpbm images using only copied 'png.py' deprecated. (will be removed soon)
 
 
 RELEASE NOTES
 
-(For issues see https://github.com/drj11/pypng/issues?state=open )
+PurePNG 0.1.0 Initial rework led to fork.
 
+Reworked Cython concept.
+Add optional filtering on save.
+Module/package duality
+Python 2/3 polyglot (and partitial Cython)
+Using bytearray when possible.
 
+(For issues see https://github.com/scondo/purepng/issues?state=open )
+
+PyPNG release history:
 Release 0.0.16
 
 Compatible with nose: `nosetests png.py` now works.

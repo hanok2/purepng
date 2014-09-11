@@ -13,6 +13,8 @@
 # http://docs.python.org/release/2.4.4/lib/module-sys.html
 import sys
 import os
+from os.path import dirname, join
+
 try:
     # http://peak.telecommunity.com/DevCenter/setuptools#basic-use
     from setuptools import setup
@@ -27,8 +29,7 @@ except ImportError:
     cythonize = False  # just to be sure
 
 def get_version():
-    from os.path import dirname, join
-    for line in open(join(dirname(__file__), 'code', 'png.py')):
+    for line in open(join(dirname(__file__), 'code', 'png', 'png.py')):
         if '__version__' in line:
             version = line.split('"')[1]
             break
@@ -47,8 +48,8 @@ https://github.com/scondo/purepng
     author='Pavel Zlatovratsky',
     author_email='scondo@mail.ru',
     url='https://github.com/scondo/purepng',
-    package_dir={'':'code'},
-    py_modules=['png'],
+    package_dir={'png':join('code', 'png')},
+    py_packages=['png'],
     classifiers=[
       'Topic :: Multimedia :: Graphics',
       'Topic :: Software Development :: Libraries :: Python Modules',
@@ -67,7 +68,7 @@ if __name__ == '__main__':
 
     if cythonize:
         from unimport import do_unimport
-        cyth_ext = do_unimport(conf['package_dir'][''])
+        cyth_ext = do_unimport(conf['package_dir']['png'])
         conf['ext_modules'] = cythonize(cyth_ext)
 
     setup(**conf)
