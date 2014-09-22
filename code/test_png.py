@@ -716,3 +716,12 @@ class Test(unittest.TestCase):
             self.assertEqual(row1, row2)
             for i in range(len(row1)):
                 row1[i] = 11117 % (i + 1)
+
+    def testPNMWrite(self):
+        o = BytesIO()
+        w,h = 3,3
+        pixels = [[0, 1, 2],
+                  [3, 0, 1],
+                  [2, 3, 0]]
+        meta = dict(alpha=False, greyscale=True, bitdepth=2, planes=1)
+        png.write_pnm(o, w, h, pixels, meta)

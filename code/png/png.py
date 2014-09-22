@@ -177,7 +177,8 @@ except ImportError:
 __all__ = ['Image', 'Reader', 'Writer',
            'Error', 'FormatError', 'ChunkError',
            'Filter', 'register_af_strategy',
-           'write_chunks', 'from_array']
+           'write_chunks', 'from_array',
+           'read_pam_header', 'read_pnm_header', 'write_pnm']
 
 
 # The PNG signature.
@@ -1298,7 +1299,7 @@ class Filter(BaseFilter):
 
         lines = [None] * 5
         for filter_type in range(5):  # range save more than 'optimised' order
-            res = bytearray(line)
+            res = bytearray(line)  # this is copy in fact
             self.filter_scanline(filter_type, line, res)
             res.insert(0, filter_type)
             lines[filter_type] = res
@@ -2729,7 +2730,7 @@ def write_pnm(file, width, height, pixels, meta):
         else:
             # PPM
             fmt = 'P6'
-        file.write('%s %d %d %d\n' % (fmt, width, height, maxval))
+        header = '%s %d %d %d\n' % (fmt, width, height, maxval)
     if planes in (2,4):
         # PAM
         # See http://netpbm.sourceforge.net/doc/pam.html
@@ -2737,9 +2738,10 @@ def write_pnm(file, width, height, pixels, meta):
             tupltype = 'GRAYSCALE_ALPHA'
         else:
             tupltype = 'RGB_ALPHA'
-        file.write('P7\nWIDTH %d\nHEIGHT %d\nDEPTH %d\nMAXVAL %d\n'
-                   'TUPLTYPE %s\nENDHDR\n' %
-                   (width, height, planes, maxval, tupltype))
+        header = ('P7\nWIDTH %d\nHEIGHT %d\nDEPTH %d\nMAXVAL %d\n'
+                  'TUPLTYPE %s\nENDHDR\n' %
+                  (width, height, planes, maxval, tupltype))
+    file.write(strtobytes(header))
     # Values per row
     vpr = planes * width
     # struct format
