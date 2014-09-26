@@ -176,7 +176,7 @@ except ImportError:
 
 __all__ = ['Image', 'Reader', 'Writer',
            'Error', 'FormatError', 'ChunkError',
-           'Filter', 'register_af_strategy',
+           'Filter', 'register_extra_filter',
            'write_chunks', 'from_array',
            'read_pam_header', 'read_pnm_header', 'write_pnm']
 
@@ -274,6 +274,12 @@ except (NameError, TypeError):
     # one argument).
     strtobytes = str
     bytestostr = str
+
+try:
+    set
+except NameError:
+    from collections import Set as set
+
 
 def interleave_planes(ipixels, apixels, ipsize, apsize):
     """
@@ -1319,7 +1325,6 @@ class Filter(BaseFilter):
         of bytes;
         """
 
-        lines = self.filter_all(line)
         if isinstance(strategy, basestring):
             strategy = {'name': str(strategy)}
         if isinstance(strategy, dict):
@@ -1330,7 +1335,7 @@ class Filter(BaseFilter):
         if strategy is None:
             raise Error("Adaptive strategy not found")
         else:
-            return strategy(lines, cfg, self)
+            return strategy(line, cfg, self)
 
     def do_filter(self, filter_type, line):
         """Applying filter, caring about prev line, interlacing etc.
@@ -1378,12 +1383,14 @@ class Filter(BaseFilter):
         return scanline
 
 
-def register_af_strategy(selector, name):
+def register_extra_filter(selector, name):
     """Register adaptive filter selection strategy for futher usage.
-    'selector' - callable like def(lines, cfg, filter_obj)
-        lines - list of lines filtered with default filters
+    'selector' - callable like def(line, cfg, filter_obj)
+        line - line for filtering
         cfg - dict with optional tuning
-        filter_obj - instance of this class (for context)
+        filter_obj - instance of this class.
+            May be used to obtain context or apply base filters
+
         callable should return chosen line
 
     'name' - name which may be used later to recall this strategy
@@ -1392,25 +1399,20 @@ def register_af_strategy(selector, name):
 
 
 #Two basic adaptive strategies
-def adapt_sum(lines, cfg, filter_obj):
+def adapt_sum(line, cfg, filter_obj):
+    lines = filter_obj.filter_all(line)
     res_s = [sum(it) for it in lines]
     r = res_s.index(min(res_s))
     return lines[r]
-register_af_strategy(adapt_sum, 'sum')
+register_extra_filter(adapt_sum, 'sum')
 
-try:
-    set
-except NameError:
-    def adapt_entropy(lines, cfg, filter_obj):
-        res_c = [len(dict.fromkeys(it)) for it in lines]
-        r = res_c.index(min(res_c))
-        return lines[r]
-else:
-    def adapt_entropy(lines, cfg, filter_obj):
-        res_c = [len(set(it)) for it in lines]
-        r = res_c.index(min(res_c))
-        return lines[r]
-register_af_strategy(adapt_entropy, 'entropy')
+
+def adapt_entropy(line, cfg, filter_obj):
+    lines = filter_obj.filter_all(line)
+    res_c = [len(set(it)) for it in lines]
+    r = res_c.index(min(res_c))
+    return lines[r]
+register_extra_filter(adapt_entropy, 'entropy')
 
 
 def from_array(a, mode=None, info={}):
@@ -2523,14 +2525,6 @@ def isinteger(x):
 
 # === Legacy Version Support ===
 
-# :pyver:old:  PurePNG works on Python versions 2.3  Really PurePNG works
-# on Python 2.4 (and  above); it works on Pythons 2.3 by virtue of fixing up
-# problems here.  It's a bit ugly (which is why it's hidden down here).
-#
-# Generally the strategy is one of pretending that we're running on
-# Python 2.4 (or above), and patching up the library support on earlier
-# versions so that it looks enough like Python 2.4.
-#
 # In order to work on Python 2.3 we fix up a recurring annoyance involving
 # the array type.  In Python 2.3 an array cannot be initialised with an
 # array, and it cannot be extended with a list (or other sequence).
