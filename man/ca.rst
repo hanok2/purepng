@@ -28,17 +28,16 @@ you want to do you might also want to use Netpbm (PurePNG can convert to
 and from the Netpbm PNM format), or use ``ctypes`` to interface directly to a
 compiled version of libpng.  If you know of others, let me know.
 
-PIL's focus is not PNG.  PIL's focus is image processing, and this is 
-where PurePNG sucks.  If you want to actually process an image---resize,
-rotate, composite, crop--then you should use PIL.  That's why PurePNG 
-supposed to provide PIL plugin for PNG reading in nearest future.
-In PurePNG you get the image as basically an array of numbers.  So some image
-processing is possible fairly easily, for example cropping to integer
-coordinates, or gamma conversion, but this very basic.
+PIL's focus is not PNG.  PIL's focus is image processing, and this is where 
+PurePNG sucks.  If you want to actually process an image---resize, rotate,
+composite, crop--then you should use PIL. You may use `PIL Plugin`_ if you want
+to use both PurePNG and PIL. In PurePNG you get the image as basically an array
+of numbers.  So some image processing is possible fairly easily, for example
+cropping to integer coordinates, or gamma conversion, but this very basic.
+
 PurePNG can read and write Netpbm PAM files. PAM is useful as an intermediary
 format for performing processing; it allows the pixel data to be transferred 
 in a simple format that is easily processed.
-
 Netpbm's support for PAM to PNG conversion is more limited than PurePNG's.
 Netpbm will only convert a source PAM that has 4 channels (for example it does
 not create greyscale--alpha PNG files from ``GRAYSCALE_ALPHA`` PAM files).
@@ -68,8 +67,31 @@ There is also "light" mode: you can just copy the ``code/png/png.py``
 file.  You can even `curl` it straight into wherever you need it:
 ``curl -O https://raw.githubusercontent.com/Scondo/purepng/master/code/png/png.py``.
 This "light" module mode contains all features required for PNG reading and
-writing, while "full" package mode contains extra features like Cython speedup
-or other format support or image processing (in future)
+writing, while "full" package mode contains extra features like Cython speedup,
+other format support, PIL plugin etc.
+
+PIL Plugin
+----------
+In "full" package PurePNG provide plugin for usage with PIL instead of PIL's
+native PNG support. This plugin is in very early stage yet can be useful.
+Just try it with ``from png import PngImagePlugin``
+
+Benefit
+^^^^^^^
+* PurePNG rely on python's zlib instead of PIL. So this plugin can be useful when PIL built without zlib support.
+* PurePNG handle ``sBIT`` chunk and rescale values.
+* PurePNG does not use separate palette or transparency when reading, providing full RGB and alpha channel instead.
+* PurePNG should write gamma
+
+Miss
+^^^^
+Most of these supposed to be added later.
+* PurePNG does not save or read dpi
+* PurePNG does not save or read iccp profile
+* PurePNG does not save or read text chunks
+* PurePNG does not save custom chunks
+* PurePNG does not use zlib dictionary and method (compression level used)
+
 
 PurePNG compare to PyPNG
 ------------------------
@@ -88,7 +110,7 @@ This changed from ``array`` to any buffer-compatible sequence (see
 https://docs.python.org/2.7/library/functions.html#buffer or https://docs.python.org/2.7/library/stdtypes.html#memoryview-type)
 
 You can use ``buffer()`` or ``memoryview()`` functions to fetch row bytes
-depending on your version of python if you have used :meth:``.tostring()`` before.
+depending on your version of python if you have used :meth:``png.tostring()`` before.
 And of course you may just use rows as sequence.
 
 Python 2.2 no longer supported
@@ -104,4 +126,4 @@ PNM|PBM|PAM deprecated in module
 For now Netpbm image format kept in ``png`` module, but it will be moved
 to a separate module within package.
 So if you want to work with Netpbm images using PurePNG do not rely on
-"light" module mode, use  "full" package. (see :Installation:)
+"light" module mode, use  "full" package. (see `Installation`_)

@@ -23,18 +23,21 @@ Done
 * Using bytearray when possible.
 * Rows in boxed flat row now may be any buffer-compatible, not only array.
 * Python 2.2 support removed.
+* PIL plugin
 
 Planned
 ^^^^^^^
-PIL plugin
+* Rework pngsuite to reading from files and use more images
+* iCCP and pHYs chunks support to enhsnce compatibility wit PIL
 
 Release
 ^^^^^^^
-Suppose 0.1 will provide stable interface in the end of 2014. And after few month will be released as 0.2.
+Suppose 0.1 will provide stable interface before end of 2014. And after few month will be released as 0.2.
 
 Future
 ------
 * Cython-accelerated scaling
 * Support more chunks at least for direct reading|embeding.
 * Provide optimisation functions like 'try to pallete' or 'try to greyscale'
+* Integrate most tools (incl. picture formats) into package
 * Other Cython acceleration when possible
