@@ -86,7 +86,7 @@ class PngImageFile(ImageFile.ImageFile):
             if row.typecode == 'H':
                 if self.mode == 'RGBA' or self.mode == 'RGB':
                     row.byteswap()
-        return str(buffer(row))
+        return bytes(buffer(row))
 
     def load_seek(self, pos=0):
         pass
