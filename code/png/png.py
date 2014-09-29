@@ -208,9 +208,9 @@ def _rel_import(module, tgt):
     # On Python < 2.5 relative import cause syntax error
         exec("from " + module + " import " + tgt, globals(), locals())
     except ValueError:
-        #relative import in non-package is ValueError, re-raise as ImportError
+        #relative import in non-package is ValueError, try absolute
         #TODO: check error
-        raise ImportError
+        exec("from " + module + " import " + tgt, globals(), locals())
     return eval(tgt)
 
 

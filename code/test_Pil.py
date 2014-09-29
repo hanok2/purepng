@@ -11,6 +11,11 @@ from io import BytesIO
 from PIL import PngImagePlugin as pilpng
 from png import PngImagePlugin as purepng
 
+try:
+    reload
+except NameError:
+    from imp import reload
+
 
 class PilImageToPyPngAdapter:
     def __init__(self, im):
