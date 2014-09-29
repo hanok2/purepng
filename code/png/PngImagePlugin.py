@@ -7,6 +7,12 @@ from PIL import Image, ImageFile
 import array
 import png
 
+try:
+    bytes
+except NameError:
+    bytes = str
+
+
 def buf_emu(not_buffer):
     if hasattr(not_buffer, 'tostring'):
         return not_buffer.tostring()
