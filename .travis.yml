@@ -5,6 +5,9 @@ python:
 
 install:
   - pip install pillow
+  - pip install coverage
+  - pip install cython
 
 script:
+  - python setup.py build_ext --inplace
   - nosetests code --with-coverage --cover-package=png
