@@ -6,6 +6,10 @@ __version__ = "0.1.0"
 from PIL import Image, ImageFile
 import array
 import png
+try:
+    from itertools import izip_longest as zip_l
+except ImportError:
+    from itertools import zip_longest as zip_l
 
 try:
     bytes
@@ -17,10 +21,9 @@ def buf_emu(not_buffer):
     if hasattr(not_buffer, 'tostring'):
         return not_buffer.tostring()
     else:
-        try:
-            return bytes(not_buffer)
-        except NameError:
-            return str(not_buffer)
+        return bytes(not_buffer)
+
+
 try:
     buffer
 except NameError:
@@ -179,12 +182,6 @@ def _save(im, fp, filename):
     if (transparency or transparency == 0):
         if im.mode == "P":
             # "Patch" palette with transparency
-            def patch_pal(old, tran):
-                if tran is not None:
-                    return old + (tran,)
-                else:
-                    return old + (255,)
-
             if isinstance(transparency, bytes):
                 transparency = bytearray(transparency)
             else:  # not sure about this
@@ -193,7 +190,8 @@ def _save(im, fp, filename):
 
             # limit to actual palette size
             alpha_bytes = 2 ** bits
-            palette = map(patch_pal, palette, transparency[:alpha_bytes])
+            palette = zip_l(palette, transparency[:alpha_bytes], fillvalue=255)
+            palette = list(map(lambda it: it[0] + (it[1],), palette))
             transparency = None
         elif im.mode == "L":
             transparency = max(0, min(65535, transparency))
