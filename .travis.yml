@@ -7,4 +7,4 @@ install:
   - pip install pillow
 
 script:
-  - nosetest code
+  - nosetests code --with-coverage --cover-package=png
