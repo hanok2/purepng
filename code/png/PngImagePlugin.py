@@ -7,6 +7,21 @@ from PIL import Image, ImageFile
 import array
 import png
 
+def buf_emu(not_buffer):
+    if hasattr(not_buffer, 'tostring'):
+        return not_buffer.tostring()
+    else:
+        try:
+            return bytes(not_buffer)
+        except NameError:
+            return str(not_buffer)
+try:
+    buffer
+except NameError:
+    try:
+        buffer = memoryview
+    except NameError:
+        buffer = buf_emu
 
 def group(s, n):
     # See http://www.python.org/doc/2.6/library/functions.html#zip
