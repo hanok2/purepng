@@ -30,7 +30,7 @@ class PilImageToPyPngAdapter:
             raise StopIteration()
         else:
             self.nowrow += 1
-            return self.__getitem__(self.nowrow)
+            return self.__getitem__(self.nowrow - 1)
 
     def __iter__(self):
         return self
