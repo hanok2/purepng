@@ -25,12 +25,13 @@ class PilImageToPyPngAdapter:
     def __len__(self):
         return self.im.size[1]
 
-    def next(self):
+    def __next__(self):
         if self.nowrow >= self.__len__():
             raise StopIteration()
         else:
             self.nowrow += 1
             return self.__getitem__(self.nowrow - 1)
+    next = __next__
 
     def __iter__(self):
         return self
@@ -46,6 +47,7 @@ class PilImageToPyPngAdapter:
                 # Single channel image
                 out.append(px)
         return out
+
 
 
 class BaseTest(unittest.TestCase):
