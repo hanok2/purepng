@@ -20,19 +20,30 @@ except NameError:
 class PilImageToPyPngAdapter:
     def __init__(self, im):
         self.im = im
+        self.nowrow = 0
 
     def __len__(self):
         return self.im.size[1]
+
+    def next(self):
+        if self.nowrow >= self.__len__():
+            raise StopIteration()
+        else:
+            self.nowrow += 1
+            return self.__getitem__(self.nowrow)
+
+    def __iter__(self):
+        return self
 
     def __getitem__(self, row):
         out = []
         for col in range(self.im.size[0]):
             px = self.im.getpixel((col, row))
             if hasattr(px, '__iter__'):
-                #Multi-channel image
+                # Multi-channel image
                 out.extend(px)
             else:
-                #Single channel image
+                # Single channel image
                 out.append(px)
         return out
 
@@ -46,12 +57,12 @@ class BaseTest(unittest.TestCase):
         if im1.mode != im2.mode or im1.mode == 'P':
             im1 = im1.convert('RGBA')
             im2 = im2.convert('RGBA')
-        pix1 = list(PilImageToPyPngAdapter(im1))
-        pix2 = list(PilImageToPyPngAdapter(im2))
+        pix1 = PilImageToPyPngAdapter(im1)
+        pix2 = PilImageToPyPngAdapter(im2)
         if im1.mode == 'RGBA':
             self.assertEqual(pix1[0][3::4], pix2[0][3::4])  # alpha fast check
         self.assertEqual(pix1[0], pix2[0])  # fast check
-        self.assertEqual(pix1, pix2)  # complete check
+        self.assertEqual(list(pix1), list(pix2))  # complete check
 
 
 class ReadTest(BaseTest):
