@@ -769,13 +769,13 @@ class Writer:
         compressing the image.  In order to avoid using large amounts of
         memory, multiple ``IDAT`` chunks may be created.
 
-        'filter_type' is number or name of filter type for better compression
-            see http://www.w3.org/TR/PNG/#9Filter-types for details
+        `filter_type` is number or name of filter type for better compression
+        see http://www.w3.org/TR/PNG/#9Filter-types for details
         It's also possible to use adaptive strategy for choosing filter type
-        per row. Predefined strategies are 'sum' and 'entropy'.
-        Custom strategies can be added with 'register_af_strategy' method or
+        per row. Predefined strategies are `sum` and `entropy`.
+        Custom strategies can be added with :meth:`register_extra_filter` or
         be callable passed with this argument.
-        (see more at 'register_af_strategy')
+        (see more at :meth:`register_extra_filter`)
         """
 
         # At the moment the `planes` argument is ignored;
@@ -1324,7 +1324,7 @@ class Filter(BaseFilter):
              dict - find and use strategy by field 'name' of this dict
                     and use it with this dict as configuration
              callable - use this callable as strategy with empty dict as cfg
-                         (check 'register_af_strategy' for documentation)
+                         (check 'register_extra_filter' for documentation)
         'line` specifies the current (unfiltered) scanline as a sequence
         of bytes;
         """
@@ -1389,20 +1389,20 @@ class Filter(BaseFilter):
 
 def register_extra_filter(selector, name):
     """Register adaptive filter selection strategy for futher usage.
-    'selector' - callable like def(line, cfg, filter_obj)
-        line - line for filtering
-        cfg - dict with optional tuning
-        filter_obj - instance of this class.
-            May be used to obtain context or apply base filters
+    `selector` - callable like ``def(line, cfg, filter_obj)``
 
-        callable should return chosen line
+    - line - line for filtering
+    - cfg - dict with optional tuning
+    - filter_obj - instance of this class to get context or apply base filters
 
-    'name' - name which may be used later to recall this strategy
+    callable should return chosen line
+
+    `name` - name which may be used later to recall this strategy
     """
     Filter.adapt_methods[str(name)] = selector
 
 
-#Two basic adaptive strategies
+# Two basic adaptive strategies
 def adapt_sum(line, cfg, filter_obj):
     lines = filter_obj.filter_all(line)
     res_s = [sum(it) for it in lines]
@@ -1636,11 +1636,9 @@ class Image:
 
     def __init__(self, rows, info):
         """
-        .. note ::
-        
           The constructor is not public.  Please do not call it.
         """
-        
+
         self.rows = rows
         self.info = info
 

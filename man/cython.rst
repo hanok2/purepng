@@ -5,17 +5,17 @@ Acceleration with Cython
 ========================
 
 Part of png.py can be compiled with Cython to achieve better performance.
-Compiled part is 'BaseFilter' class now.
-Compilation use 'pngfilters.pxd' file do declare types and override functions.
+Compiled part is :meth:`png.BaseFilter` class now.
+Compilation use ``pngfilters.pxd`` file do declare types and override functions.
 
 Compilation
 -----------
 Compilation will be done automatically during setup process while Cython and c-compiler installed.
 If you do not want to install binary-compiled part you may skip compilation 
-using '--no-cython' option for setup.py.
+using ``--no-cython`` option for setup.py.
 
 When you use pypng without installation you may build cythonized code using
-"setup.py build_ext --inplace"
+``setup.py build_ext --inplace``
 
 Developing with Cython
 ----------------------

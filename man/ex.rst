@@ -2,7 +2,7 @@
 .. $Rev$
 
 PurePNG Code Examples
-===================
+=====================
 
 
 This section discusses some example Python programs that use the png

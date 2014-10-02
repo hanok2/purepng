@@ -25,7 +25,7 @@ Comparison to other PNG tools
 
 The most obvious "competitor" to PurePNG is PIL.  Depending on what job
 you want to do you might also want to use Netpbm (PurePNG can convert to
-and from the Netpbm PNM format), or use ``ctypes`` to interface directly to a
+and from the Netpbm PNM format), or use :py:mod:`ctypes` to interface directly to a
 compiled version of libpng.  If you know of others, let me know.
 
 PIL's focus is not PNG.  PIL's focus is image processing, and this is where 
@@ -49,7 +49,7 @@ processing of files with any bit depth from 1 to 16 (for example a
 10-bit scanner may use the ``sBIT`` chunk to declare that the samples in
 a 16-bit PNG file are rescaled 10-bit samples; in this case, PurePNG
 delivers 10-bit samples).  Netpbm handle's the ``sBIT`` chunk in a
-similar way, but other toolsets may not (PIL?).
+similar way, but other toolsets may not (e.g. PIL with native plugin).
 
 ``libpng`` is made by the PNG gods, so if want to get at all that
 goodness, then you may want to interface directly to libpng via
@@ -60,10 +60,9 @@ Installation
 ------------
 
 Because PurePNG is written in Python it's trivial to install into a Python
-installation, or include in your application (as long as it's written in
-Python!).  Just use ``python setup.py install``.
+installation.  Just use ``python setup.py install``.
 
-There is also "light" mode: you can just copy the ``code/png/png.py`` 
+There is also "light" mode: you can just copy the :download:`../code/png/png.py` 
 file.  You can even `curl` it straight into wherever you need it:
 ``curl -O https://raw.githubusercontent.com/Scondo/purepng/master/code/png/png.py``.
 This "light" module mode contains all features required for PNG reading and
@@ -85,13 +84,13 @@ Benefit
 
 Miss
 ^^^^
-Most of these supposed to be added later.
 * PurePNG does not save or read dpi
 * PurePNG does not save or read iccp profile
 * PurePNG does not save or read text chunks
 * PurePNG does not save custom chunks
 * PurePNG does not use zlib dictionary and method (compression level used)
 
+Most of these supposed to be added later.
 
 PurePNG compare to PyPNG
 ------------------------
@@ -105,20 +104,20 @@ Buffer, not array
 ^^^^^^^^^^^^^^^^^
 
 PyPNG document that rows in boxed flat row could be any sequence, but
-in practice even unit-test check that it should be ``array.array``.
-This changed from ``array`` to any buffer-compatible sequence (see
-https://docs.python.org/2.7/library/functions.html#buffer or https://docs.python.org/2.7/library/stdtypes.html#memoryview-type)
+in practice even unit-test check that it should be :py:class:`array.array`.
+This changed from :py:class:`array.array` to any buffer-compatible sequence.
 
-You can use ``buffer()`` or ``memoryview()`` functions to fetch row bytes
-depending on your version of python if you have used :meth:``png.tostring()`` before.
+You can use :py:func:`buffer()` or :py:class:`memoryview()` functions to fetch row bytes
+depending on your version of python if you have used :py:meth:`~array.array.tostring()` before.
 And of course you may just use rows as sequence.
 
 Python 2.2 no longer supported
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Most features were already broken in Python 2.2 and it couldn't be fixed.
-So support of Python 2.2 is completely removed. Python 2.2 is pretty old,
-you know?
+So support of Python 2.2 is completely removed.
+
+Python 2.2 is pretty old, you know?
 
 PNM|PBM|PAM deprecated in module
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

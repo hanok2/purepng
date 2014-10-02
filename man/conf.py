@@ -19,7 +19,8 @@ from setup import conf
 # General configuration
 # ---------------------
 
-extensions = ['sphinx.ext.autodoc']
+extensions = ['sphinx.ext.autodoc', 'sphinx.ext.intersphinx']
+intersphinx_mapping = {'python': ('https://docs.python.org/2.7', None)}
 templates_path = []
 source_suffix = '.rst'
 master_doc = 'index'
@@ -27,7 +28,7 @@ project = u'PurePNG'
 copyright = u'2014, ' + conf['author']
 release = conf['version']
 version = release[:release.rfind('.')]
-language='en'
+language = 'en'
 today_fmt = '%Y-%m-%d'
 exclude_trees = ['build']
 
@@ -49,11 +50,11 @@ latex_paper_size = 'a4'
 # The font size ('10pt', '11pt' or '12pt').
 #latex_font_size = '10pt'
 
-# Grouping the document tree into LaTeX files. List of tuples
-# (source start file, target name, title, author, document class [howto/manual]).
+#Grouping the document tree into LaTeX files. List of tuples
+#(source start file, target name, title, author, document class[howto/manual]).
 latex_documents = [
   ('index', 'PurePNG.tex', ur'PurePNG Documentation',
-   ur'David Jones', 'manual'),
+   conf['author'], 'manual'),
 ]
 
 # The name of an image file (relative to this directory) to place at the top of
@@ -61,4 +62,4 @@ latex_documents = [
 #latex_logo = None
 
 # http://sphinx.pocoo.org/ext/autodoc.html?highlight=__init__
-autoclass_content='both'
+autoclass_content = 'both'
