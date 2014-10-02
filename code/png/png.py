@@ -533,8 +533,13 @@ class BaseFilter:
             result[i] = (x - pr) & 0xff
             ai += 1
 
-    def unfilter_scanline(self, filter_type, line):
-        """Undo the filter for a scanline."""
+    def undo_filter(self, filter_type, line):
+        """Undo the filter for a scanline.  `scanline` is a sequence of
+        bytes that does not include the initial filter type byte.
+
+        The scanline will have the effects of filtering removed.
+        Scanline modified inplace and also returned as result.
+        """
         assert 0 <= filter_type <= 4
         # For the first line of a pass, synthesize a dummy previous line.
         if self.prev is None:
@@ -559,8 +564,9 @@ class BaseFilter:
         # This will not work writing cython attributes from python
         # Only 'cython from cython' or 'python from python'
         self.prev[:] = line[:]
+        return line
 
-    def filter_scanline(self, filter_type, line, result):
+    def _filter_scanline(self, filter_type, line, result):
         """Apply a scanline filter to a scanline.
         `filter_type` specifies the filter type (0 to 4)
         'line` specifies the current (unfiltered) scanline as a sequence
@@ -1310,7 +1316,7 @@ class Filter(BaseFilter):
         lines = [None] * 5
         for filter_type in range(5):  # range save more than 'optimised' order
             res = bytearray(line)  # this is copy in fact
-            self.filter_scanline(filter_type, line, res)
+            self._filter_scanline(filter_type, line, res)
             res.insert(0, filter_type)
             lines[filter_type] = res
         return lines
@@ -1355,7 +1361,7 @@ class Filter(BaseFilter):
         line = bytearray(line)
         if isinstance(filter_type, int):
             res = bytearray(line)
-            self.filter_scanline(filter_type, line, res)
+            self._filter_scanline(filter_type, line, res)
             res.insert(0, filter_type)  # Add filter type as the first byte
         else:
             res = self.adaptive_filter(filter_type, line)
@@ -1366,25 +1372,6 @@ class Filter(BaseFilter):
                 del self.restarts[0]
                 self.prev = None
         return res
-
-    def undo_filter(self, filter_type, scanline):
-        """Undo the filter for a scanline.  `scanline` is a sequence of
-        bytes that does not include the initial filter type byte.
-
-        The scanline will have the effects of filtering removed.
-        Scanline modified inplace and also returned as result.
-        """
-
-        if filter_type == 0:
-            self.prev = bytearray(scanline)
-            return scanline
-
-        if filter_type not in (1, 2, 3, 4):
-            raise FormatError('Invalid PNG Filter Type.'
-              '  See http://www.w3.org/TR/2003/REC-PNG-20031110/#9Filters .')
-
-        self.unfilter_scanline(filter_type, scanline)
-        return scanline
 
 
 def register_extra_filter(selector, name):
@@ -1838,7 +1825,7 @@ class Reader:
                 if filter_type not in (0, 1, 2, 3, 4):
                     raise FormatError('Invalid PNG Filter Type.'
                 '  See http://www.w3.org/TR/2003/REC-PNG-20031110/#9Filters .')
-                filt.unfilter_scanline(filter_type, scanline)
+                filt.undo_filter(filter_type, scanline)
                 # Convert so that there is one element per pixel value
                 flat = self.serialtoflat(scanline, ppr)
                 if xstep == 1:
@@ -1931,7 +1918,7 @@ class Reader:
                     raise FormatError('Invalid PNG Filter Type.'
                 '  See http://www.w3.org/TR/2003/REC-PNG-20031110/#9Filters .')
                 scanline = a[offset + 1:offset + rb_1]
-                filt.unfilter_scanline(filter_type, scanline)
+                filt.undo_filter(filter_type, scanline)
                 yield scanline
                 offset += rb_1
             del a[:offset]
