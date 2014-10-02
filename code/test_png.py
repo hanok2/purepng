@@ -725,3 +725,6 @@ class Test(unittest.TestCase):
                   [2, 3, 0]]
         meta = dict(alpha=False, greyscale=True, bitdepth=2, planes=1)
         png.write_pnm(o, w, h, pixels, meta)
+
+if __name__ == "__main__":
+    unittest.main()
