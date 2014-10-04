@@ -455,9 +455,10 @@ class BaseFilter:
     def __do_filter_up(self, scanline, result):
         """Up filter."""
 
+        previous = self.prev
         for i in range(len(result)):
             x = scanline[i]
-            b = self.prev[i]
+            b = previous[i]
             result[i] = (x - b) & 0xff
 
     def __undo_filter_average(self, scanline):
@@ -479,13 +480,14 @@ class BaseFilter:
         """Average filter."""
 
         ai = -self.fu
+        previous = self.prev
         for i in range(len(result)):
             x = scanline[i]
             if ai < 0:
                 a = 0
             else:
                 a = scanline[ai]
-            b = self.prev[i]
+            b = previous[i]
             result[i] = (x - ((a + b) >> 1)) & 0xff
             ai += 1
 
