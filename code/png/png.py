@@ -205,11 +205,11 @@ def _rel_import(module, tgt):
     try:
         exec("from ." + module + " import " + tgt, globals(), locals())
     except SyntaxError:
-    # On Python < 2.5 relative import cause syntax error
+        # On Python < 2.5 relative import cause syntax error
         exec("from " + module + " import " + tgt, globals(), locals())
     except ValueError:
-        #relative import in non-package is ValueError, try absolute
-        #TODO: check error
+        # relative import in non-package is ValueError, try absolute
+        # TODO: check error
         exec("from " + module + " import " + tgt, globals(), locals())
     return eval(tgt)
 
@@ -285,7 +285,7 @@ except (NameError, TypeError):
 try:
     set
 except NameError:
-    from collections import Set as set
+    from sets import Set as set
 
 
 def interleave_planes(ipixels, apixels, ipsize, apsize):
