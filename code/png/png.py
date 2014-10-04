@@ -240,6 +240,7 @@ def newHarray(length=0):
 try:
     # bytearray exists (>= Python 2.6).
     newBarray = bytearray
+    copyBarray = bytearray
 except NameError:
     # bytearray does not exist. We're probably < Python 2.6 (the
     # version in which bytearray appears).
@@ -248,6 +249,12 @@ except NameError:
 
     def newBarray(length=0):
         return array('B', [0]) * length
+
+    if hasattr(array, '__copy__'):
+        # a bit faster if possible
+        copyBarray = array.__copy__
+    else:
+        copyBarray = bytearray
 
     def bytearray_to_bytes(row):
         """Convert bytearray to bytes.  Recal that `row` will
@@ -1315,7 +1322,7 @@ class Filter(BaseFilter):
 
         lines = [None] * 5
         for filter_type in range(5):  # range save more than 'optimised' order
-            res = bytearray(line)  # this is copy in fact
+            res = copyBarray(line)
             self._filter_scanline(filter_type, line, res)
             res.insert(0, filter_type)
             lines[filter_type] = res
@@ -2553,6 +2560,7 @@ except TypeError:
 
     def newHarray(length=0):
         return array('H', [0] * length)
+
 
 if tee is None:  # There is no tee before Python 2.4
     def tee(iterable, n=2):
