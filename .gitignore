@@ -2,3 +2,16 @@ test/.urchin.log
 test/.urchin_stdout
 *.pyc
 *.class
+# Eclipse config
+.project
+.pydevproject
+.settings
+# Documentation
+html
+# Cythonized
+code/png/pngfilters.c
+# Cythonize annotation
+code/png/pngfilters.html
+# Compiled filters
+code/png/pngfilters.pyd
+code/png/*pngfilters*.so
