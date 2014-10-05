@@ -9,14 +9,28 @@ python:
   - "pypy"
   - "pypy3"
 
+env:
+  - USE_CYTHON=yes
+  - USE_CYTHON=no
+
+matrix:
+  allow_failures:
+    # Cython build may fail in PyPy, that's why pure mode so important
+    - python: "pypy"
+      env: USE_CYTHON=yes
+    - python: "pypy3"
+      env: USE_CYTHON=yes
+
 install:
   - pip install pillow
   - pip install coverage
   - pip install cython
 
+# This is install in fact, yet conditional
+before_script:
+  - sh -c "if [ '$USE_CYTHON' = 'yes' ]; then pip install cython; fi"
+
 script:
-  # Pure python mode
-  - nosetests code --with-coverage --cover-package=png
-  # Cython accelerated
+  # Will be built if cython installed
   - python setup.py build_ext --inplace
   - nosetests code --with-coverage --cover-package=png
