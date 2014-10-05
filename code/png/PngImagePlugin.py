@@ -1,3 +1,4 @@
+# encoding=utf-8
 # The Python Imaging Library (PIL) is
 
 #    Copyright © 1997-2011 by Secret Labs AB

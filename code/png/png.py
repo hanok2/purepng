@@ -1,7 +1,9 @@
 #!/usr/bin/env python
-
+# encoding=utf-8
+#
 # png.py - PNG encoder/decoder in pure Python
 #
+# Copyright (C) 2014 Pavel Zlatovratskii <scondo@mail.ru>
 # Copyright (C) 2006 Johann C. Rocholl <johann@browsershots.org>
 # Portions Copyright (C) 2009 David Jones <drj@pobox.com>
 # And probably portions Copyright (C) 2006 Nicko van Someren <nicko@nicko.org>
@@ -72,7 +74,7 @@ each letter abbreviates a single channel: *L* is for Luminance or Luma
 or Lightness which is the channel used in greyscale images; *R*, *G*,
 *B* stand for Red, Green, Blue, the components of a colour image; *A*
 stands for Alpha, the opacity channel (used for transparency effects,
-but higher values are more opaque, so it makes sense to call it 
+but higher values are more opaque, so it makes sense to call it
 opacity).
 
 A note on formats
@@ -164,14 +166,14 @@ import warnings
 try:
     from functools import reduce
 except ImportError:
-    #suppose to get there on python<2.7 where reduce is only built-in function
+    # suppose to get there on python<2.7 where reduce is only built-in function
     pass
 
 try:
     from itertools import imap as map
 
 except ImportError:
-    #On Python 3 there is no imap, but map works like imap instead
+    # On Python 3 there is no imap, but map works like imap instead
     pass
 
 __all__ = ['Image', 'Reader', 'Writer',
@@ -957,7 +959,7 @@ class Writer:
 
         Most users are expected to find the :meth:`write` or
         :meth:`write_array` method more convenient.
-        
+
         The rows should be given to this method in the order that
         they appear in the output file.  For straightlaced images,
         this is the usual top to bottom ordering, but for interlaced
@@ -1333,14 +1335,17 @@ class Filter(BaseFilter):
     adapt_methods = {}
 
     def adaptive_filter(self, strategy, line):
-        """Applying adaptive filters
-        'strategy' may be one of following types:
-             string - find and use strategy with this name
-             dict - find and use strategy by field 'name' of this dict
-                    and use it with this dict as configuration
-             callable - use this callable as strategy with empty dict as cfg
-                         (check 'register_extra_filter' for documentation)
-        'line` specifies the current (unfiltered) scanline as a sequence
+        """Applying non-standart filters (e.g. adaptive selection)
+
+        `strategy` may be one of following types:
+
+        - string - find and use strategy with this name
+        - dict - find and use strategy by field 'name' of this dict
+          and use it with this dict as configuration
+        - callable - use this callable as strategy with empty dict as cfg
+          check :meth:`register_extra_filter` for documentation)
+
+        `line` specifies the current (unfiltered) scanline as a sequence
         of bytes;
         """
 
@@ -1358,9 +1363,9 @@ class Filter(BaseFilter):
 
     def do_filter(self, filter_type, line):
         """Applying filter, caring about prev line, interlacing etc.
-        'filter_type' may be integer to apply basic filter or
+        `filter_type` may be integer to apply basic filter or
         adaptive strategy with dict
-        ('name' is reqired field, others may tune strategy)
+        (`name` is reqired field, others may tune strategy)
         """
 
         # Recall that filtering algorithms are applied to bytes,
@@ -1426,7 +1431,7 @@ def from_array(a, mode=None, info={}):
       only.  It doesn't actually work.  Please bear with us.  Meanwhile
       enjoy the complimentary snacks (on request) and please use a
       2-dimensional array.
-    
+
     Unless they are specified using the *info* parameter, the PNG's
     height and width are taken from the array size.  For a 3 dimensional
     array the first axis is the height; the second axis is the width;
@@ -1481,7 +1486,7 @@ def from_array(a, mode=None, info={}):
     metadata (in the same style as the arguments to the
     :class:``png.Writer`` class).  For this function the keys that are
     useful are:
-    
+
     height
       overrides the height derived from the array dimensions and allows
       *a* to be an iterable.
@@ -2387,7 +2392,7 @@ class Reader:
         (*width*, *height*, *pixels*, *metadata*).
         *width*, *height*, *metadata* are as per the
         :meth:`read` method.
-        
+
         *pixels* is the pixel data in boxed row flat pixel format.
         """
 
