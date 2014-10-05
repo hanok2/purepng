@@ -24,7 +24,6 @@ matrix:
 install:
   - pip install pillow
   - pip install coverage
-  - pip install cython
 
 # This is install in fact, yet conditional
 before_script:
