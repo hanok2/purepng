@@ -1,5 +1,5 @@
 README for PurePNG
-scondo@pobox.com
+scondo@mail.ru
 
 
 INTRODUCTION
@@ -9,7 +9,7 @@ particular png.py is a Python module written entirely in Python.
 
 
 PurePNG home page: http://github.com/scondo/purepng/
-
+PurePNG documentation: http://purepng.readthedocs.org/en/latest/
 
 QUICK START
 
@@ -17,9 +17,7 @@ QUICK START
     png.from_array([[255, 0, 0, 255],
                     [0, 255, 255, 0]], 'L').save("small_smiley.png")
 
-After that, try "import png" then "help(png)".  Also,
-lickable HTML documentation appears in the html/ directory.  If HTML is
-no good then you could try the ReST sources in the man/ directory.
+After that, try "import png" then "help(png)".
 
 
 INSTALLATION
