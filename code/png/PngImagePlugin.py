@@ -85,18 +85,17 @@ class PngImageFile(ImageFile.ImageFile):
         if meta['bitdepth'] > 8:
             if self.mode == 'L':
                 self.mode = 'I'
-                rawmode = 'I;16'
-            elif self.mode == 'RGBA':
-                rawmode = 'RGBA;16B'
-            elif self.mode == 'RGB':
-                rawmode = 'RGB;16B'
+                self.rawmode = 'I;16'
             else:
-                rawmode = self.mode + ';' + str(meta['bitdepth'])
+                # 16 bit per pixel decoders are big endian byte order
+                self.rawmode = self.mode + ';' + str(meta['bitdepth']) + 'B'
         else:
-            rawmode = self.mode
+            self.rawmode = self.mode
+        if self.rawmode == 'LA;16B':
+            self.mode = 'RGBA'  # No native LA 16 bit in PIL
         self.pixels = pixels
         # image data
-        self.tile = [("raw", (0, 0) + self.size, 0, rawmode)]
+        self.tile = [("raw", (0, 0) + self.size, 0, self.rawmode)]
         self.info['gamma'] = meta.get('gamma')
         #self.text = self.png.im_text # experimental
 
@@ -110,7 +109,7 @@ class PngImageFile(ImageFile.ImageFile):
         row = next(self.pixels)
         if isinstance(row, array.array):
             if row.typecode == 'H':
-                if self.mode == 'RGBA' or self.mode == 'RGB':
+                if self.rawmode.endswith('B'):
                     row.byteswap()
         return bytes(buffer(row))
 
