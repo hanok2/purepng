@@ -75,6 +75,8 @@ class PngImageFile(ImageFile.ImageFile):
             bitdepth = max(sbit)
         if bitdepth < 8:
             x, y, pixels, meta = self.png._as_rescale(direct, 8)
+        elif 16 > bitdepth > 8:
+            x, y, pixels, meta = self.png._as_rescale(direct, 16)
         else:
             x, y, pixels, meta = direct()
         self.size = y, x
@@ -82,7 +84,7 @@ class PngImageFile(ImageFile.ImageFile):
         if meta['alpha']:
             self.mode = self.mode + 'A'
 
-        if meta['bitdepth'] > 8:
+        if meta['bitdepth'] == 16:
             if self.mode == 'L':
                 self.mode = 'I'
                 self.rawmode = 'I;16'
