@@ -666,7 +666,10 @@ class Writer:
                  colormap=None,
                  maxval=None,
                  chunk_limit=2 ** 20,
-                 filter_type=None):
+                 filter_type=None,
+                 iccp=None,
+                 iccp_name="ICC Profile",
+                 ):
         """
         Create a PNG encoder object.
 
@@ -697,7 +700,12 @@ class Writer:
           Create an interlaced image.
         chunk_limit
           Write multiple ``IDAT`` chunks to save memory.
-
+        filter_type
+          Enable and specify PNG filter
+        iccp
+          Write ICCP
+        iccp_name
+          Name for ICCP
         The image size (in pixels) can be specified either by using the
         `width` and `height` arguments, or with the single `size`
         argument.  If `size` is used it should be a pair (*width*,
@@ -892,6 +900,11 @@ class Writer:
         self.transparent = transparent
         self.background = background
         self.gamma = gamma
+        self.iccp = iccp
+        if iccp:
+            self.iccp_name = strtobytes(iccp_name)
+            if not self.iccp_name:
+                raise Error("ICC profile shoud have a name")
         self.greyscale = bool(greyscale)
         self.alpha = bool(alpha)
         self.colormap = bool(palette)
@@ -996,7 +1009,13 @@ class Writer:
         if self.gamma is not None:
             write_chunk(outfile, 'gAMA',
                         struct.pack("!L", int(round(self.gamma*1e5))))
-
+        # See :chunk:order
+        # http://www.w3.org/TR/PNG/#11iCCP
+        if self.iccp is not None:
+            write_chunk(outfile, 'iCCP',
+                        self.iccp_name + strtobytes(chr(0)) +
+                        strtobytes(chr(0)) +
+                        zlib.compress(self.iccp, self.compression))
         # See :chunk:order
         # http://www.w3.org/TR/PNG/#11sBIT
         if self.rescale:
@@ -2115,6 +2134,14 @@ class Reader:
         except struct.error:
             raise FormatError("gAMA chunk has incorrect length.")
 
+    def _process_iCCP(self, data):
+        i = data.index(chr(0))
+        self.iccp_name = data[:i]
+        compression = data[i + 1]
+        # TODO: Raise FormatError
+        assert compression == chr(0)
+        self.iccp = zlib.decompress(data[i + 2:])
+
     def _process_sBIT(self, data):
         self.sbit = data
         if (self.colormap and len(data) != 3 or
@@ -2184,14 +2211,13 @@ class Reader:
         for attr in 'greyscale alpha planes bitdepth interlace'.split():
             meta[attr] = getattr(self, attr)
         meta['size'] = (self.width, self.height)
-        for attr in 'gamma transparent background'.split():
+        for attr in 'gamma transparent background iccp iccp_name'.split():
             a = getattr(self, attr, None)
             if a is not None:
                 meta[attr] = a
         if self.plte:
             meta['palette'] = self.palette()
         return self.width, self.height, pixels, meta
-
 
     def read_flat(self):
         """

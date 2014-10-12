@@ -99,6 +99,7 @@ class PngImageFile(ImageFile.ImageFile):
         # image data
         self.tile = [("raw", (0, 0) + self.size, 0, self.rawmode)]
         self.info['gamma'] = meta.get('gamma')
+        self.info['icc_profile'] = meta.get('iccp')
         #self.text = self.png.im_text # experimental
 
     def verify(self):
@@ -235,13 +236,13 @@ def _save(im, fp, filename):
                         transparent=transparency,
                         compression=im.encoderinfo.get("compress_level", -1),
                         gamma=im.info.get('gamma'),
+                        iccp=im.info.get("icc_profile"),
                         )
 
     writer.write(fp, rows())
 
     #  TODO: pHYs
     #  TODO: pnginfo (?)
-    #  TODO: ICC
 
     try:
         fp.flush()
