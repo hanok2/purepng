@@ -235,7 +235,8 @@ class Test(unittest.TestCase):
         "asRGBA8() on colour type 2 source."""
         # Test for Issue 26
         # Also test that png.Reader can take a "file-like" object.
-        r = png.Reader(BytesIO(pngsuite.basn2c08))
+        pngsuite.basn2c08.seek(0)
+        r = png.Reader(pngsuite.basn2c08)
         x,y,pixels,meta = r.asRGBA8()
         # Test the pixels at row 9 columns 0 and 1.
         row9 = list(pixels)[9]
@@ -243,7 +244,8 @@ class Test(unittest.TestCase):
                          [0xff, 0xdf, 0xff, 0xff, 0xff, 0xde, 0xff, 0xff])
 
         # More testing: rescale and bitdepth > 8
-        r = png.Reader(BytesIO(pngsuite.basn2c16))
+        pngsuite.basn2c16.seek(0)
+        r = png.Reader(pngsuite.basn2c16)
         x, y, pixels, meta = r.asRGBA8()
         # Test the pixels at row 9 columns 0 and 1.
         row9 = list(pixels)[9]
@@ -253,7 +255,8 @@ class Test(unittest.TestCase):
     def testLtoRGBA(self):
         "asRGBA() on grey source."""
         # Test for Issue 60
-        r = png.Reader(bytes=pngsuite.basi0g08)
+        pngsuite.basi0g08.seek(0)
+        r = png.Reader(pngsuite.basi0g08)
         x,y,pixels,meta = r.asRGBA()
         row9 = list(list(pixels)[9])
         self.assertEqual(row9[0:8],
@@ -261,12 +264,14 @@ class Test(unittest.TestCase):
     def testCtrns(self):
         "Test colour type 2 and tRNS chunk."
         # Test for Issue 25
-        r = png.Reader(bytes=pngsuite.tbrn2c08)
+        pngsuite.tbrn2c08.seek(0)
+        r = png.Reader(pngsuite.tbrn2c08)
         x,y,pixels,meta = r.asRGBA8()
         # I just happen to know that the first pixel is transparent.
-        # In particular it should be #7f7f7f00
+        # In particular it should be #7f7f7f00 (changed to #ffffff00 in 2011)
         row0 = list(pixels)[0]
-        self.assertEqual(tuple(row0[0:4]), (0x7f, 0x7f, 0x7f, 0x00))
+        self.assertEqual(tuple(row0[0:4]), (0xff, 0xff, 0xff, 0x00))
+
     def testAdam7read(self):
         """Adam7 interlace reading.
         Specifically, test that for images in the PngSuite that
@@ -279,8 +284,8 @@ class Test(unittest.TestCase):
             if candi not in pngsuite.png:
                 continue
             logging.info('adam7 read' + candidate)
-            straight = png.Reader(bytes=pngsuite.png[candidate])
-            adam7 = png.Reader(bytes=pngsuite.png[candi])
+            straight = png.Reader(pngsuite.png[candidate])
+            adam7 = png.Reader(pngsuite.png[candi])
             # Just compare the pixels.  Ignore x,y (because they're
             # likely to be correct?); metadata is ignored because the
             # "interlace" member differs.  Lame.
@@ -299,11 +304,13 @@ class Test(unittest.TestCase):
         for filtertype in (0, 1, 2, 3, 4,\
                            {'name': 'sum'},\
                            {'name': 'entropy'}):
-            for name, bytes_ in pngsuite.png.items():
+            for name, file_ in pngsuite.png.items():
                 # Only certain colour types supported for this test.
-                if name[3:5] not in ['n0', 'n2', 'n4', 'n6']:
+                if name[3:5] not in ['n0', 'n2', 'n4', 'n6'] or\
+                        not name.lower().startswith('basn'):
                     continue
-                it = png.Reader(bytes=bytes_)
+                file_.seek(0)
+                it = png.Reader(file_)
                 x, y, pixels, meta = it.read()
                 # straightlaced is easier to filter, so we test interlaced
                 # using straight as reference
@@ -314,7 +321,8 @@ class Test(unittest.TestCase):
                                   interlace=False, filter_type=0)
 
                 x, y, ps, meta = png.Reader(bytes=pngi).read()
-                it = png.Reader(bytes=bytes_)
+                file_.seek(0)
+                it = png.Reader(file_)
                 x, y, pixels, meta = it.read()
                 pngs = topngbytes('adam7wi' + name + '.png', pixels,
                                   x=x, y=y, bitdepth=it.bitdepth,
@@ -367,15 +375,18 @@ class Test(unittest.TestCase):
         self.assertEqual(sbit, strtobytes('\x04\x04'))
     def testPal(self):
         """Test that a palette PNG returns the palette in info."""
-        r = png.Reader(bytes=pngsuite.basn3p04)
+        pngsuite.basn3p04.seek(0)
+        r = png.Reader(pngsuite.basn3p04)
         x,y,pixels,info = r.read()
         self.assertEqual(x, 32)
         self.assertEqual(y, 32)
         self.assertEqual('palette' in info, True)
+
     def testPalWrite(self):
         """Test metadata for paletted PNG can be passed from one PNG
         to another."""
-        r = png.Reader(bytes=pngsuite.basn3p04)
+        pngsuite.basn3p04.seek(0)
+        r = png.Reader(pngsuite.basn3p04)
         x,y,pixels,info = r.read()
         w = png.Writer(**info)
         o = BytesIO()
@@ -386,9 +397,11 @@ class Test(unittest.TestCase):
         _,_,_,again_info = r.read()
         # Same palette
         self.assertEqual(again_info['palette'], info['palette'])
+
     def testPalExpand(self):
         """Test that bitdepth can be used to fiddle with pallete image."""
-        r = png.Reader(bytes=pngsuite.basn3p04)
+        pngsuite.basn3p04.seek(0)
+        r = png.Reader(pngsuite.basn3p04)
         x,y,pixels,info = r.read()
         pixels = [list(row) for row in pixels]
         info['bitdepth'] = 8
@@ -439,7 +452,8 @@ class Test(unittest.TestCase):
         """Test the dictionary returned by a `read` method can be used
         as args for :meth:`Writer`.
         """
-        r = png.Reader(bytes=pngsuite.basn2c16)
+        pngsuite.png['basn2c16'].seek(0)
+        r = png.Reader(file=pngsuite.png['basn2c16'])
         info = r.read()[3]
         w = png.Writer(**info)
     def testPackedIter(self):
@@ -460,13 +474,15 @@ class Test(unittest.TestCase):
     def testInterlacedBuffer(self):
         """Test that reading an interlaced PNG yields each row as
         buffer-compatible type."""
-        r = png.Reader(bytes=pngsuite.basi0g08)
+        pngsuite.basi0g08.seek(0)
+        r = png.Reader(pngsuite.basi0g08)
         buffer(list(r.read()[2])[0])
 
     def testTrnsBuffer(self):
         """Test that reading a type 2 PNG with tRNS chunk yields each
         row as buffer-compatible type (using asDirect)."""
-        r = png.Reader(bytes=pngsuite.tbrn2c08)
+        pngsuite.tbrn2c08.seek(0)
+        r = png.Reader(pngsuite.tbrn2c08)
         buffer(list(r.asDirect()[2])[0])
 
     # Invalid file format tests.  These construct various badly
@@ -481,7 +497,7 @@ class Test(unittest.TestCase):
     def testSigOnly(self):
         """Test file containing just signature bytes."""
 
-        r = png.Reader(bytes=pngsuite.basi0g01[:8])
+        r = png.Reader(bytes=pngsuite.png['basi0g01'].read(8))
         self.assertRaises(png.FormatError, r.asDirect)
     def testExtraPixels(self):
         """Test file that contains too many pixels."""
@@ -495,6 +511,7 @@ class Test(unittest.TestCase):
             chunk = (chunk[0], data)
             return chunk
         self.assertRaises(png.FormatError, self.helperFormat, eachchunk)
+
     def testNotEnoughPixels(self):
         def eachchunk(chunk):
             if chunk[0] != 'IDAT':
@@ -505,8 +522,10 @@ class Test(unittest.TestCase):
             data = zlib.compress(data)
             return (chunk[0], data)
         self.assertRaises(png.FormatError, self.helperFormat, eachchunk)
+
     def helperFormat(self, f):
-        r = png.Reader(bytes=pngsuite.basn0g01)
+        pngsuite.basn0g01.seek(0)
+        r = png.Reader(pngsuite.basn0g01)
         o = BytesIO()
         def newchunks():
             for chunk in r.chunks():
@@ -540,7 +559,8 @@ class Test(unittest.TestCase):
                 m.update(string)
                 return m
 
-        r = png.Reader(bytes=pngsuite.basn0g02)
+        pngsuite.basn0g02.seek(0)
+        r = png.Reader(pngsuite.basn0g02)
         x,y,pixel,meta = r.read_flat()
         d = md5_func(seqtobytes(pixel)).hexdigest()
         self.assertEqual(d, '255cd971ab8cd9e7275ff906e5041aa0')
@@ -708,8 +728,10 @@ class Test(unittest.TestCase):
         # Tests that the rows yielded by the pixels generator
         # can be safely modified.
         k = 'f02n0g08'
-        r1 = png.Reader(bytes=pngsuite.png[k])
-        r2 = png.Reader(bytes=pngsuite.png[k])
+        pngsuite.png[k].seek(0)
+        r1 = png.Reader(bytes=pngsuite.png[k].read())
+        pngsuite.png[k].seek(0)
+        r2 = png.Reader(bytes=pngsuite.png[k].read())
         _, _, pixels1, info1 = r1.asDirect()
         _, _, pixels2, info2 = r2.asDirect()
         for row1, row2 in zip(pixels1, pixels2):

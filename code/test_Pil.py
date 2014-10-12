@@ -71,7 +71,7 @@ class ReadTest(BaseTest):
     def runTest(self):
         if self.test_ is None:
             return
-        test_file = BytesIO(self.test_)
+        test_file = self.test_
         # Load via PurePNG
         reload(purepng)
         im_pure = Image.open(test_file)
@@ -87,8 +87,9 @@ class WriteTest(BaseTest):
     def runTest(self):
         if self.test_ is None:
             return
-        test_file = BytesIO(self.test_)
+        test_file = self.test_
         # Load via PIL default plugin
+        test_file.seek(0)
         reload(pilpng)
         im_orig = Image.open(test_file)
         # Save via PurePNG
@@ -103,8 +104,9 @@ class WriteTest(BaseTest):
 # Generate tests for each suite file
 # Except known cases when fail caused by PIL
 testsuite = pngsuite.png
-del testsuite['tbbn1g04']
-# grayscale + transparency does not provide alpha
+del testsuite['tbbn0g04']
+del testsuite['tbwn0g16']
+# Greyscale + transparency does not provide alpha
 del testsuite['Basn0g03']
 # PIL ignore sBIT on 4bit greyscale, PurePNG provide more accuracy
 for tname_, test_ in (testsuite.items()):
