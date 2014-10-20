@@ -4,6 +4,7 @@ Created on 27 may 2014
 @author: Scondo
 '''
 import unittest
+from unittest.util import safe_repr
 import pngsuite
 from PIL import Image
 from io import BytesIO
@@ -49,9 +50,86 @@ class PilImageToPyPngAdapter:
         return out
 
 
-
 class BaseTest(unittest.TestCase):
     test_ = None
+    delta = 0
+
+    def assertAlmostEqual(self, first, second,
+                          places=None, msg=None, delta=None):
+        """Updated version which can handle iterables
+
+           Fail if the two objects are unequal as determined by their
+           difference rounded to the given number of decimal places
+           (default 7) and comparing to zero, or by comparing that the
+           between the two objects is more than the given delta.
+
+           Note that decimal places (from zero) are usually not the same
+           as significant digits (measured from the most signficant digit).
+
+           If the two objects compare equal then they will automatically
+           compare almost equal.
+        """
+        if first == second:
+            # shortcut
+            return
+        if delta is not None and places is not None:
+            raise TypeError("specify delta or places not both")
+        if delta is not None and places is None:
+            places = 7
+
+        def valuecompare(value1, value2):
+            if value1 == value2:
+                # shortcut
+                return
+
+            if delta is not None:
+                if abs(value1 - value2) <= delta:
+                    return
+                standardMsg = '%s != %s within %s delta' % (safe_repr(value1),
+                                                        safe_repr(value2),
+                                                        safe_repr(delta))
+            else:  # if delta is not None:
+                if round(abs(value1 - value2), places) == 0:
+                    return
+                standardMsg = '%s != %s within %r places' % (safe_repr(value1),
+                                                          safe_repr(value2),
+                                                          places)
+            return standardMsg
+
+        def compareIters(first, second):
+            passed = []
+            errmsg = None
+            for v1, v2 in zip(first, second):
+                if hasattr(v1, '__iter__') and hasattr(v2, '__iter__'):
+                    mymsg = compareIters(v1, v2)
+                else:
+                    mymsg = valuecompare(v1, v2)
+
+                if mymsg is None:
+                    # clean
+                    passed.append(v1)
+                else:
+                    if errmsg is None:
+                        errmsg = mymsg + '\n['
+                    errmsg = errmsg + ('' if errmsg.endswith('\n') else '\n')
+                    errmsg = errmsg + '\n'.join([repr(p) for p in passed])
+                    errmsg = errmsg + ('' if errmsg.endswith('\n') else '\n')
+                    errmsg = errmsg + ' - ' + repr(v1)
+                    errmsg = errmsg + '\n + ' + repr(v2)
+                    passed = []
+
+            if errmsg is not None:
+                errmsg = errmsg + ']'
+            return errmsg
+
+        if hasattr(first, '__iter__') and hasattr(second, '__iter__'):
+            standardMsg = compareIters(first, second)
+        else:
+            standardMsg = valuecompare(first, second)
+
+        if standardMsg is not None:
+            msg = self._formatMessage(msg, standardMsg)
+            raise self.failureException(msg)
 
     def compareImages(self, im1, im2):
         if 'gamma' in im1.info:
@@ -62,9 +140,11 @@ class BaseTest(unittest.TestCase):
         pix1 = PilImageToPyPngAdapter(im1)
         pix2 = PilImageToPyPngAdapter(im2)
         if im1.mode == 'RGBA':
-            self.assertEqual(pix1[0][3::4], pix2[0][3::4])  # alpha fast check
-        self.assertEqual(pix1[0], pix2[0])  # fast check
-        self.assertEqual(list(pix1), list(pix2))  # complete check
+            self.assertAlmostEqual(pix1[0][3::4], pix2[0][3::4],
+                                   delta=self.delta)  # alpha fast check
+        self.assertAlmostEqual(pix1[0], pix2[0],
+                               delta=self.delta)  # fast check
+        self.assertAlmostEqual(pix1, pix2, delta=self.delta)  # complete check
 
 
 class ReadTest(BaseTest):
@@ -95,6 +175,7 @@ class WriteTest(BaseTest):
         # Save via PurePNG
         reload(purepng)
         pure_file = BytesIO()
+        pure_file.name = type(self).__name__
         im_orig.save(pure_file, 'PNG')
         # Load again, plugin unimportant after read test
         pure_file.seek(0)
@@ -104,16 +185,28 @@ class WriteTest(BaseTest):
 # Generate tests for each suite file
 # Except known cases when fail caused by PIL
 testsuite = pngsuite.png
+
+# Greyscale + transparency does not provide alpha
 del testsuite['tbbn0g04']
 del testsuite['tbwn0g16']
-# Greyscale + transparency does not provide alpha
-del testsuite['Basn0g03']
-# PIL ignore sBIT on 4bit greyscale, PurePNG provide more accuracy
+
+
+def getdelta(testname):
+    if testname.endswith('16'):
+        return 1
+    elif testname == 'Basn0g03':
+        # PIL ignore sBIT on 4bit greyscale, PurePNG provide more accuracy
+        return 7
+    else:
+        return 0
+
 for tname_, test_ in (testsuite.items()):
     globals()[tname_ + '_rtest'] = type(tname_ + '_rtest', (ReadTest,),
-                                       {'test_': test_})
+                                       {'test_': test_,
+                                        'delta': getdelta(tname_)})
     globals()[tname_ + '_wtest'] = type(tname_ + '_wtest', (WriteTest,),
-                                       {'test_': test_})
+                                       {'test_': test_,
+                                        'delta': getdelta(tname_)})
 
 if __name__ == "__main__":
     unittest.main()
