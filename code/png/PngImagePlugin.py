@@ -75,8 +75,11 @@ class PngImageFile(ImageFile.ImageFile):
             bitdepth = max(sbit)
         if bitdepth < 8:
             x, y, pixels, meta = self.png._as_rescale(direct, 8)
-        elif 16 > bitdepth > 8:
+        elif 16 > bitdepth > 8 and self.png.greyscale:
             x, y, pixels, meta = self.png._as_rescale(direct, 16)
+        # PIL does not support RGB 16bit/channel
+        elif bitdepth != 8 and not self.png.greyscale:
+            x, y, pixels, meta = self.png._as_rescale(direct, 8)
         else:
             x, y, pixels, meta = direct()
         self.size = y, x
