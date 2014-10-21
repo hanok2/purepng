@@ -23,6 +23,7 @@ matrix:
 
 install:
   - pip install pillow
+  - pip install numpy
   - pip install coverage
 
 # This is install in fact, yet conditional
