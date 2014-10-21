@@ -2394,14 +2394,26 @@ class Reader:
         targetmaxval = 2**targetbitdepth - 1
         factor = float(targetmaxval) / float(maxval)
         meta['bitdepth'] = targetbitdepth
-        def iterscale():
-            for row in pixels:
+
+        def iterscale(rows):
+            for row in rows:
                 yield array('BH'[targetbitdepth > 8],
                             [int(round(x * factor)) for x in row])
         if maxval == targetmaxval:
             return width, height, pixels, meta
         else:
-            return width, height, iterscale(), meta
+            if 'transparent' in meta:
+                transparent = meta['transparent']
+                if isinstance(transparent, tuple):
+                    transparent = tuple(list(
+                                        iterscale((transparent,))
+                                        )[0])
+                else:
+                    transparent = tuple(list(
+                                        iterscale(((transparent,),))
+                                        )[0])[0]
+                meta['transparent'] = transparent
+            return width, height, iterscale(pixels), meta
 
     def asRGB8(self):
         """Return the image data as an RGB pixels with 8-bits per
