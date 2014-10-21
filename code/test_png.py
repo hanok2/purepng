@@ -286,8 +286,8 @@ class Test(unittest.TestCase):
             logging.info('adam7 read' + candidate)
             straight = png.Reader(pngsuite.png[candidate])
             adam7 = png.Reader(pngsuite.png[candi])
-            straight.seek(0)
-            adam7.seek(0)
+            pngsuite.png[candidate].seek(0)
+            pngsuite.png[candi].seek(0)
             # Just compare the pixels.  Ignore x,y (because they're
             # likely to be correct?); metadata is ignored because the
             # "interlace" member differs.  Lame.
