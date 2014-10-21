@@ -127,7 +127,8 @@ class PngImageFile(ImageFile.ImageFile):
 # PNG writer
 def _save(im, fp, filename):
     # save an image to disk (called by the save method)
-    def rows():
+    encoderinfo = im.encoderinfo
+    def rows(im):
         for i in range(im.size[0]):
             row = []
             for j in range(im.size[1]):
@@ -166,16 +167,16 @@ def _save(im, fp, filename):
         bits = 1
         fullrows = rows
 
-        def rows():
-            for row in fullrows():
+        def rows(im):
+            for row in fullrows(im):
                 yield [bool(it) for it in row]
 
     if im.mode == "P":
         palette_bytes = im.palette.getdata()[1]
         # attempt to minimize storage requirements for palette images
-        if "bits" in im.encoderinfo:
+        if "bits" in encoderinfo:
             # number of bits specified by user
-            colors = 1 << im.encoderinfo["bits"]
+            colors = 1 << encoderinfo["bits"]
         else:
             # check palette contents
             if im.palette:
@@ -204,7 +205,7 @@ def _save(im, fp, filename):
         #    palette_bytes.append(0)
         palette = group(palette_bytes, 3)
 
-    transparency = im.encoderinfo.get('transparency',
+    transparency = encoderinfo.get('transparency',
                         im.info.get('transparency',
                             None))
     if (transparency or transparency == 0):
@@ -224,9 +225,15 @@ def _save(im, fp, filename):
         elif im.mode == "L":
             transparency = max(0, min(65535, transparency))
         elif im.mode == "RGB":
+            # as max value per channel in RGB mode is 255
+            # higher trasparency is a bug
+            if max(transparency) > 255:
+                im = im.convert('RGBA')
+                alpha = True
+                transparency = None
             pass  # triade will pass to writer
         else:
-            if "transparency" in im.encoderinfo:
+            if "transparency" in encoderinfo:
                 # don't bother with transparency if it's an RGBA
                 # and it's in the info dict. It's probably just stale.
                 raise IOError("cannot use transparency for this mode")
@@ -237,12 +244,12 @@ def _save(im, fp, filename):
                         alpha=alpha,
                         palette=palette,
                         transparent=transparency,
-                        compression=im.encoderinfo.get("compress_level", -1),
+                        compression=encoderinfo.get("compress_level", -1),
                         gamma=im.info.get('gamma'),
                         iccp=im.info.get("icc_profile"),
                         )
 
-    writer.write(fp, rows())
+    writer.write(fp, rows(im))
 
     #  TODO: pHYs
     #  TODO: pnginfo (?)
