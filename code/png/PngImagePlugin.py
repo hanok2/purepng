@@ -103,6 +103,14 @@ class PngImageFile(ImageFile.ImageFile):
         self.tile = [("raw", (0, 0) + self.size, 0, self.rawmode)]
         self.info['gamma'] = meta.get('gamma')
         self.info['icc_profile'] = meta.get('iccp')
+        if 'phy' in meta:
+            if meta['phy'][1] == 1:
+                self.info['dpi'] = (int(meta['phy'][0][0] * 0.0254 + 0.5),
+                                    int(meta['phy'][0][1] * 0.0254 + 0.5))
+            elif meta['phy'][1] == 0:
+                # multiply on other instead of division to avoid float
+                self.info['aspect'] = (meta['phy'][0][1],
+                                       meta['phy'][0][0])
         #self.text = self.png.im_text # experimental
 
     def verify(self):

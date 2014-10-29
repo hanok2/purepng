@@ -2148,6 +2148,11 @@ class Reader:
             not self.colormap and len(data) != self.planes):
             raise FormatError("sBIT chunk has incorrect length.")
 
+    def _process_pHYs(self, data):
+        # http://www.w3.org/TR/PNG/#11pHYs
+        ppux, ppuy, unit = struct.unpack('!IIB', data)
+        self.phy = ((ppux, ppuy), unit)
+
     def idat(self, lenient=False):
         """Iterator that yields all the ``IDAT`` chunks as strings."""
         while True:
@@ -2211,7 +2216,7 @@ class Reader:
         for attr in 'greyscale alpha planes bitdepth interlace'.split():
             meta[attr] = getattr(self, attr)
         meta['size'] = (self.width, self.height)
-        for attr in 'gamma transparent background iccp iccp_name'.split():
+        for attr in 'gamma transparent background iccp iccp_name phy'.split():
             a = getattr(self, attr, None)
             if a is not None:
                 meta[attr] = a

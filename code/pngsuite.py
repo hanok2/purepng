@@ -16,7 +16,7 @@ suite_file = tarfile.open(os.path.join(os.path.dirname(__file__),
 # Suite by names, but skip error tests and size(unsupported yet)
 suite_files_b = [(splitext(f)[0], suite_file.extractfile(f))
                for f in suite_file.getnames() if
-               (not f.startswith('x') and not f.startswith('cd'))]
+               (not f.startswith('x'))]
 suite_files_b = dict(suite_files_b)
 
 from png import strtobytes
