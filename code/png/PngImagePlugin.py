@@ -246,6 +246,11 @@ def _save(im, fp, filename):
                 # don't bother with transparency if it's an RGBA
                 # and it's in the info dict. It's probably just stale.
                 raise IOError("cannot use transparency for this mode")
+    phy = None
+    if 'aspect' in im.info:
+        phy = (im.info['aspect'], 0)
+    if 'dpi' in im.info:
+        phy = (im.info['dpi'], 'i')
 
     writer = png.Writer(size=im.size,
                         greyscale=greyscale,
@@ -256,6 +261,7 @@ def _save(im, fp, filename):
                         compression=encoderinfo.get("compress_level", -1),
                         gamma=im.info.get('gamma'),
                         iccp=im.info.get("icc_profile"),
+                        phy=phy
                         )
 
     writer.write(fp, rows(im))
