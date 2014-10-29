@@ -143,13 +143,29 @@ class BaseTest(unittest.TestCase):
             raise self.failureException(msg)
 
     def compareImages(self, im1, im2):
-        if 'gamma' in im1.info:
-            self.assertEqual(im1.info['gamma'], im2.info.get('gamma'))
+        self.assertEqual(im1.size, im2.size)
+        # Copy info before clean it as PIL may rely on this while reading
+        info1 = dict(im1.info)
+        info2 = dict(im2.info)
+        # Transparency will be converted to alpha later
+        if 'transparency' in info1:
+            del info1['transparency']
+        if 'transparency' in info2:
+            del info2['transparency']
+        # Interlace does not affect image, only way it saved
+        if 'interlace' in info1:
+            del info1['interlace']
+        if 'interlace' in info2:
+            del info2['interlace']
+        self.assertEqual(info1, info2)
+        # compare pixels
         if im1.mode != im2.mode or im1.mode == 'P':
             im1 = im1.convert('RGBA')
             im2 = im2.convert('RGBA')
+
         pix1 = PilImageToPyPngAdapter(im1)
         pix2 = PilImageToPyPngAdapter(im2)
+
         if im1.mode == 'RGBA':
             self.assertAlmostEqual(pix1[0][3::4], pix2[0][3::4],
                                    delta=self.delta)  # alpha fast check
