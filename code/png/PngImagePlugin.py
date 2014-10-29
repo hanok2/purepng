@@ -82,7 +82,7 @@ class PngImageFile(ImageFile.ImageFile):
             x, y, pixels, meta = self.png._as_rescale(direct, 8)
         else:
             x, y, pixels, meta = direct()
-        self.size = y, x
+        self.size = x, y
         self.mode = "L" if meta['greyscale'] else "RGB"
         if meta['alpha']:
             self.mode = self.mode + 'A'
@@ -129,9 +129,9 @@ def _save(im, fp, filename):
     # save an image to disk (called by the save method)
     encoderinfo = im.encoderinfo
     def rows(im):
-        for i in range(im.size[0]):
+        for i in range(im.size[1]):
             row = []
-            for j in range(im.size[1]):
+            for j in range(im.size[0]):
                 px = im.getpixel((j, i))
                 if hasattr(px, '__iter__'):
                     #Multi-channel image
