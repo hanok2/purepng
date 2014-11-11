@@ -661,15 +661,14 @@ class Writer:
                  gamma=None,
                  compression=None,
                  interlace=False,
-                 bytes_per_sample=None, # deprecated
-                 planes=None,
-                 colormap=None,
                  maxval=None,
                  chunk_limit=2 ** 20,
                  filter_type=None,
                  iccp=None,
                  iccp_name="ICC Profile",
                  phy=None,
+                 text=None,
+                 **kwargs
                  ):
         """
         Create a PNG encoder object.
@@ -813,12 +812,6 @@ class Writer:
             phy = (300, 'inch')  # 300dpi in both dimensions
         """
 
-        # At the moment the `planes` argument is ignored;
-        # its purpose is to act as a dummy so that
-        # ``Writer(x, y, **info)`` works, where `info` is a dictionary
-        # returned by Reader.read and friends.
-        # Ditto for `colormap`.
-
         width, height = check_sizes(size, width, height)
         del size
 
@@ -834,14 +827,16 @@ class Writer:
             raise ValueError(
                 "transparent colour not allowed with alpha channel")
 
-        if bytes_per_sample is not None:
+        if 'bytes_per_sample' in kwargs:
             warnings.warn('please use bitdepth instead of bytes_per_sample',
                           DeprecationWarning)
+            bytes_per_sample = kwargs.pop('bytes_per_sample')
             if bytes_per_sample not in (0.125, 0.25, 0.5, 1, 2):
                 raise ValueError(
                     "bytes per sample must be .125, .25, .5, 1, or 2")
             bitdepth = int(8*bytes_per_sample)
-        del bytes_per_sample
+            del bytes_per_sample
+
         if not isinteger(bitdepth) or bitdepth < 1 or 16 < bitdepth:
             raise ValueError("bitdepth (%r) must be a postive integer <= 16" %
               bitdepth)
@@ -917,6 +912,41 @@ class Writer:
             elif phy[1] in ('cm', 'centimeter'):
                 phy = ((phy[0][0] * 100,
                         phy[0][1] * 100), 1)
+
+        if not text:
+            self.text = {}
+        else:
+            self.text = text
+        # Support for registered keywords as kwargs
+        if 'Title' in kwargs:
+            self.text['Title'] = kwargs.pop('Title')
+        if 'Author' in kwargs:
+            self.text['Author'] = kwargs.pop('Author')
+        if 'Description' in kwargs:
+            self.text['Description'] = kwargs.pop('Description')
+        if 'Copyright' in kwargs:
+            self.text['Copyright'] = kwargs.pop('Copyright')
+        if 'Software' in kwargs:
+            self.text['Software'] = kwargs.pop('Software')
+        if 'Disclaimer' in kwargs:
+            self.text['Disclaimer'] = kwargs.pop('Disclaimer')
+        if 'Warning' in kwargs:
+            self.text['Warning'] = kwargs.pop('Warning')
+        if 'Source' in kwargs:
+            self.text['Source'] = kwargs.pop('Source')
+        if 'Comment' in kwargs:
+            self.text['Comment'] = kwargs.pop('Comment')
+
+        # At the moment the `planes` argument is ignored;
+        # its purpose is to act as a dummy so that
+        # ``Writer(x, y, **info)`` works, where `info` is a dictionary
+        # returned by Reader.read and friends.
+        # Ditto for `colormap`.
+        kwargs.pop('planes', None)
+        kwargs.pop('colormap', None)
+
+        if kwargs:
+            warnings.warn("Unknown writer args: " + str(kwargs))
 
         # It's important that the true boolean values (greyscale, alpha,
         # colormap, interlace) are converted to bool because Iverson's
@@ -1084,6 +1114,11 @@ class Writer:
             write_chunk(outfile, 'pHYs',
                         struct.pack("!IIB", self.phy[0][0], self.phy[0][1],
                                     self.phy[1]))
+        if self.text:
+            for k, v in self.text.iteritems():
+                if isinstance(v, unicode):
+                    v = v.encode('latin-1')
+                write_chunk(outfile, 'tEXt', k + strtobytes(chr(0)) + v)
 
         for idat in idat_sequence:
             write_chunk(outfile, 'IDAT', idat)
@@ -1764,6 +1799,7 @@ class Reader:
         # Will be the first 8 bytes, later on.  See validate_signature.
         self.signature = None
         self.transparent = None
+        self.text = {}
         # A pair of (len, chunk_type) if a chunk has been read but its data and
         # checksum have not (in other words the file position is just
         # past the 4 bytes that specify the chunk type).  See preamble
@@ -2180,6 +2216,21 @@ class Reader:
             not self.colormap and len(data) != self.planes):
             raise FormatError("sBIT chunk has incorrect length.")
 
+    def _process_tEXt(self, data):
+        # http://www.w3.org/TR/PNG/#11tEXt
+        i = data.index(chr(0))
+        self.text[data[:i]] = data[i + 1:].decode('latin-1')
+
+    def _process_zTXt(self, data):
+        # http://www.w3.org/TR/PNG/#11zTXt
+        i = data.index(chr(0))
+        keyword = data[:i]
+        # TODO: Raise FormatError
+        assert data[i + 1] == chr(0)
+        text = zlib.decompress(data[i + 2:]).decode('latin-1')
+        self.text[keyword] = text
+
+
     def _process_pHYs(self, data):
         # http://www.w3.org/TR/PNG/#11pHYs
         ppux, ppuy, unit = struct.unpack('!IIB', data)
@@ -2248,7 +2299,7 @@ class Reader:
         for attr in 'greyscale alpha planes bitdepth interlace'.split():
             meta[attr] = getattr(self, attr)
         meta['size'] = (self.width, self.height)
-        for attr in 'gamma transparent background iccp iccp_name phy'.split():
+        for attr in 'gamma transparent background iccp iccp_name phy text'.split():
             a = getattr(self, attr, None)
             if a is not None:
                 meta[attr] = a
