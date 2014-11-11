@@ -112,7 +112,7 @@ class PngImageFile(ImageFile.ImageFile):
             elif meta['phy'][1] == 0:
                 self.info['aspect'] = (meta['phy'][0][0],
                                        meta['phy'][0][1])
-        #self.text = self.png.im_text # experimental
+        self.info.update(meta['text'])  # experimental
 
     def verify(self):
         "Verify PNG file"
@@ -150,29 +150,29 @@ def _save(im, fp, filename):
                     row.append(px)
             yield row
     # Default values
+    meta = dict(im.info)
     bits = 8
-    palette = None
-    alpha = False
-    greyscale = (im.mode == 'L')
+    if im.mode == 'L':
+        meta['greyscale'] = True
     if im.mode == 'I':
-        greyscale = True
+        meta['greyscale'] = True
         bits = 16
     elif im.mode == 'LA':
-        greyscale = True
-        alpha = True
+        meta['greyscale'] = True
+        meta['alpha'] = True
     elif im.mode == 'RGBA':
-        alpha = True
+        meta['alpha'] = True
     elif im.mode == 'L;4':
-        greyscale = True
+        meta['greyscale'] = True
         bits = 4
     elif im.mode == 'L;2':
-        greyscale = True
+        meta['greyscale'] = True
         bits = 2
     elif im.mode == 'L;1':
-        greyscale = True
+        meta['greyscale'] = True
         bits = 1
     elif im.mode == '1':
-        greyscale = True
+        meta['greyscale'] = True
         bits = 1
         fullrows = rows
 
@@ -210,9 +210,7 @@ def _save(im, fp, filename):
         if len(palette_bytes) < palette_byte_number:
             palette_bytes.extend((0,) * \
                                  (palette_byte_number - len(palette_bytes)))
-        #while len(palette_bytes) < palette_byte_number:
-        #    palette_bytes.append(0)
-        palette = group(palette_bytes, 3)
+        meta['palette'] = group(palette_bytes, 3)
 
     transparency = encoderinfo.get('transparency',
                         im.info.get('transparency',
@@ -228,8 +226,10 @@ def _save(im, fp, filename):
 
             # limit to actual palette size
             alpha_bytes = 2 ** bits
-            palette = zip_l(palette, transparency[:alpha_bytes], fillvalue=255)
-            palette = list(map(lambda it: it[0] + (it[1],), palette))
+            palette = zip_l(meta['palette'],
+                            transparency[:alpha_bytes],
+                            fillvalue=255)
+            meta['palette'] = list(map(lambda it: it[0] + (it[1],), palette))
             transparency = None
         elif im.mode == "L":
             transparency = max(0, min(65535, transparency))
@@ -238,7 +238,7 @@ def _save(im, fp, filename):
             # higher trasparency is a bug
             if max(transparency) > 255:
                 im = im.convert('RGBA')
-                alpha = True
+                meta['alpha'] = True
                 transparency = None
             pass  # triade will pass to writer
         else:
@@ -246,27 +246,21 @@ def _save(im, fp, filename):
                 # don't bother with transparency if it's an RGBA
                 # and it's in the info dict. It's probably just stale.
                 raise IOError("cannot use transparency for this mode")
-    phy = None
+
     if 'aspect' in im.info:
-        phy = (im.info['aspect'], 0)
+        meta['phy'] = (meta.pop('aspect'), 0)
     if 'dpi' in im.info:
-        phy = (im.info['dpi'], 'i')
+        meta['phy'] = (meta.pop('dpi'), 'i')
+    meta.pop('transparency', None)
 
     writer = png.Writer(size=im.size,
-                        greyscale=greyscale,
                         bitdepth=bits,
-                        alpha=alpha,
-                        palette=palette,
                         transparent=transparency,
                         compression=encoderinfo.get("compress_level", -1),
-                        gamma=im.info.get('gamma'),
-                        iccp=im.info.get("icc_profile"),
-                        phy=phy
-                        )
+                        **meta)
 
     writer.write(fp, rows(im))
 
-    #  TODO: pHYs
     #  TODO: pnginfo (?)
 
     try:
