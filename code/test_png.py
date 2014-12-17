@@ -452,7 +452,7 @@ class Test(unittest.TestCase):
         self.assertEqual(meta['bitdepth'], 1)
 
     def testPhyAspect(self):
-        """Test that phy is read and could be correctly applied
+        """Test that physical is read and could be correctly applied
 
         The first (cdf) image is an example of flat (horizontal) pixels,
         where the pHYS chunk (x is 1 per unit, y = 4 per unit) must take
@@ -461,27 +461,29 @@ class Test(unittest.TestCase):
         pngsuite.png['cdfn2c08'].seek(0)
         r = png.Reader(pngsuite.png['cdfn2c08'])
         x, y, pixels, info = r.read()
-        self.assertEqual('phy' in info, True)
-        self.assertEqual(x / info['phy'][0][0], y / info['phy'][0][1])
+        self.assertEqual('physical' in info, True)
+        self.assertEqual(x / info['physical'][0][0],
+                         y / info['physical'][0][1])
 
         pngsuite.png['cdhn2c08'].seek(0)
         r = png.Reader(pngsuite.png['cdhn2c08'])
         x, y, pixels, info = r.read()
-        self.assertEqual('phy' in info, True)
-        self.assertEqual(x / info['phy'][0][0], y / info['phy'][0][1])
+        self.assertEqual('physical' in info, True)
+        self.assertEqual(x / info['physical'][0][0],
+                         y / info['physical'][0][1])
 
     def testPhyResolution(self):
-        """Test that phy is read and represent printing size
+        """Test that physical measures is read and represent printing size
 
         This should result in a picture of 3.2 cm square.
         """
         pngsuite.png['cdun2c08'].seek(0)
         r = png.Reader(pngsuite.png['cdun2c08'])
         x, y, pixels, info = r.read()
-        self.assertEqual('phy' in info, True)
-        self.assertEqual(info['phy'][1], 1)  # unit is meter
-        self.assertEqual(float(x) / info['phy'][0][0], 0.032)
-        self.assertEqual(float(y) / info['phy'][0][1], 0.032)
+        self.assertEqual('physical' in info, True)
+        self.assertEqual(info['physical'][1], 1)  # unit is meter
+        self.assertEqual(float(x) / info['physical'][0][0], 0.032)
+        self.assertEqual(float(y) / info['physical'][0][1], 0.032)
 
     def testWinfo(self):
         """Test the dictionary returned by a `read` method can be used

@@ -666,7 +666,7 @@ class Writer:
                  filter_type=None,
                  iccp=None,
                  iccp_name="ICC Profile",
-                 phy=None,
+                 physical=None,
                  text=None,
                  **kwargs
                  ):
@@ -706,7 +706,7 @@ class Writer:
           Write ICCP
         iccp_name
           Name for ICCP
-        phy
+        physical
           Physical parameters of pixel
         The image size (in pixels) can be specified either by using the
         `width` and `height` arguments, or with the single `size`
@@ -804,12 +804,12 @@ class Writer:
         be callable passed with this argument.
         (see more at :meth:`register_extra_filter`)
 
-        `phy` supposed two be tuple of two parameterts: pixels per unit
+        `physical` supposed two be tuple of two parameterts: pixels per unit
         and unit type; unit type may be omitted
         pixels per unit could be simple integer or tuple of (ppu_x, ppu_y)
         Examples:
-            phy = ((1,4),)  # wide pixels (4:1) without unit specifier
-            phy = (300, 'inch')  # 300dpi in both dimensions
+            physical = ((1,4),)  # wide pixels (4:1) without unit specifier
+            physical = (300, 'inch')  # 300dpi in both dimensions
         """
 
         width, height = check_sizes(size, width, height)
@@ -896,22 +896,22 @@ class Writer:
 
         transparent = check_color(transparent, greyscale, 'transparent')
         background = check_color(background, greyscale, 'background')
-        if phy is not None:
+        if physical is not None:
             # Ensure length and convert all false to 0 (no unit)
-            if len(phy) == 1 or not phy[1]:
-                phy = (phy[0], 0)
+            if len(physical) == 1 or not physical[1]:
+                physical = (physical[0], 0)
             # Single dimension
-            if isinstance(phy[0], (int, long, float)):
-                phy = ((phy[0], phy[0]), phy[1])
+            if isinstance(physical[0], (int, long, float)):
+                physical = ((physical[0], physical[0]), physical[1])
             # Unit conversion
-            if phy[1] in (1, 'm', 'meter'):
-                phy = (phy[0], 1)
-            elif phy[1] in ('i', 'in', 'inch'):
-                phy = ((int(phy[0][0] / 0.0254 + 0.5),
-                        int(phy[0][1] / 0.0254 + 0.5)), 1)
-            elif phy[1] in ('cm', 'centimeter'):
-                phy = ((phy[0][0] * 100,
-                        phy[0][1] * 100), 1)
+            if physical[1] in (1, 'm', 'meter'):
+                physical = (physical[0], 1)
+            elif physical[1] in ('i', 'in', 'inch'):
+                physical = ((int(physical[0][0] / 0.0254 + 0.5),
+                        int(physical[0][1] / 0.0254 + 0.5)), 1)
+            elif physical[1] in ('cm', 'centimeter'):
+                physical = ((physical[0][0] * 100,
+                             physical[0][1] * 100), 1)
 
         if not text:
             self.text = {}
@@ -961,7 +961,7 @@ class Writer:
             self.iccp_name = strtobytes(iccp_name)
             if not self.iccp_name:
                 raise Error("ICC profile shoud have a name")
-        self.phy = phy
+        self.physical = physical
         self.greyscale = bool(greyscale)
         self.alpha = bool(alpha)
         self.colormap = bool(palette)
@@ -1110,10 +1110,12 @@ class Writer:
                 write_chunk(outfile, 'bKGD',
                             struct.pack("!3H", *self.background))
         # http://www.w3.org/TR/PNG/#11pHYs
-        if self.phy is not None:
+        if self.physical is not None:
             write_chunk(outfile, 'pHYs',
-                        struct.pack("!IIB", self.phy[0][0], self.phy[0][1],
-                                    self.phy[1]))
+                        struct.pack("!IIB",
+                                    self.physical[0][0],
+                                    self.physical[0][1],
+                                    self.physical[1]))
         if self.text:
             for k, v in self.text.iteritems():
                 if isinstance(v, unicode):
@@ -2234,7 +2236,7 @@ class Reader:
     def _process_pHYs(self, data):
         # http://www.w3.org/TR/PNG/#11pHYs
         ppux, ppuy, unit = struct.unpack('!IIB', data)
-        self.phy = ((ppux, ppuy), unit)
+        self.physical = ((ppux, ppuy), unit)
 
     def idat(self, lenient=False):
         """Iterator that yields all the ``IDAT`` chunks as strings."""
@@ -2299,7 +2301,8 @@ class Reader:
         for attr in 'greyscale alpha planes bitdepth interlace'.split():
             meta[attr] = getattr(self, attr)
         meta['size'] = (self.width, self.height)
-        for attr in 'gamma transparent background iccp iccp_name phy text'.split():
+        for attr in ('gamma', 'transparent', 'background',
+                     'iccp', 'iccp_name', 'physical', 'text'):
             a = getattr(self, attr, None)
             if a is not None:
                 meta[attr] = a
