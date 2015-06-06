@@ -19,7 +19,7 @@ try:
     set
 except NameError:
     from sets import Set as set
-    
+
 import unittest
 import pngsuite
 from PIL import Image
@@ -169,6 +169,7 @@ class BaseTest(unittest.TestCase):
             del info1['interlace']
         if 'interlace' in info2:
             del info2['interlace']
+        self.longMessage = True
         self.assertDictEqual(info1, info2)
         # compare pixels
         if im1.mode != im2.mode or im1.mode == 'P':
