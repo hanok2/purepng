@@ -33,6 +33,10 @@ try:
 except NameError:
     from imp import reload
 
+try:
+    unicode
+except NameError:
+    unicode = str
 
 class PilImageToPyPngAdapter:
     def __init__(self, im):
@@ -151,7 +155,12 @@ class BaseTest(unittest.TestCase):
         keys = set(d1.keys())
         keys.union(set(d2.keys()))
         for key_ in keys:
-            self.assertEqual(d1.get(key_), d2.get(key_),
+            val1 = d1.get(key_)
+            val2 = d2.get(key_)
+            if isinstance(val2, unicode) and not isinstance(val1, unicode):
+                # try someway
+                val2 = val2.encode('utf-8')
+            self.assertEqual(val1, val2,
                              'Unequal values for key ' + repr(key_))
 
     def compareImages(self, im1, im2):
