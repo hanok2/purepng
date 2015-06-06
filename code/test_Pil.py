@@ -148,8 +148,6 @@ class BaseTest(unittest.TestCase):
             raise self.failureException(msg)
 
     def assertDictEqual(self, d1, d2, msg=None):
-        self.assertIsInstance(d1, dict, 'First argument is not a dictionary')
-        self.assertIsInstance(d2, dict, 'Second argument is not a dictionary')
         keys = set(d1.keys())
         keys.union(set(d2.keys()))
         for key_ in keys:
