@@ -151,7 +151,8 @@ class BaseTest(unittest.TestCase):
         keys = set(d1.keys())
         keys.union(set(d2.keys()))
         for key_ in keys:
-            self.assertEqual(d1.get(key_), d2.get(key_))
+            self.assertEqual(d1.get(key_), d2.get(key_),
+                             'Unequal values for key ' + repr(key_))
 
     def compareImages(self, im1, im2):
         self.assertEqual(im1.size, im2.size)
