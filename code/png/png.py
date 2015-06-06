@@ -1134,6 +1134,8 @@ class Writer:
                         v = v.encode('utf-8')
                 else:
                     international = False
+                if not isinstance(k, bytes):
+                    k = strtobytes(k)
                 if international:
                     # No compress, language tag or translated keyword for now
                     write_chunk(outfile, 'iTXt', k + strtobytes(chr(0)) +
