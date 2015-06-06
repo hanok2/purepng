@@ -291,6 +291,8 @@ except (NameError, TypeError):
     strtobytes = str
     bytestostr = str
 
+zerobyte = strtobytes(chr(0))
+
 try:
     set
 except NameError:
@@ -1077,8 +1079,8 @@ class Writer:
         # http://www.w3.org/TR/PNG/#11iCCP
         if self.iccp is not None:
             write_chunk(outfile, 'iCCP',
-                        self.iccp_name + strtobytes(chr(0)) +
-                        strtobytes(chr(0)) +
+                        self.iccp_name + zerobyte +
+                        zerobyte +
                         zlib.compress(self.iccp, self.compression))
         # See :chunk:order
         # http://www.w3.org/TR/PNG/#11sBIT
@@ -1138,11 +1140,11 @@ class Writer:
                     k = strtobytes(k)
                 if international:
                     # No compress, language tag or translated keyword for now
-                    write_chunk(outfile, 'iTXt', k + strtobytes(chr(0)) +
-                                strtobytes(chr(0)) + strtobytes(chr(0)) +
-                                strtobytes(chr(0)) + strtobytes(chr(0)) + v)
+                    write_chunk(outfile, 'iTXt', k + zerobyte +
+                                zerobyte + zerobyte +
+                                zerobyte + zerobyte + v)
                 else:
-                    write_chunk(outfile, 'tEXt', k + strtobytes(chr(0)) + v)
+                    write_chunk(outfile, 'tEXt', k + zerobyte + v)
 
         for idat in idat_sequence:
             write_chunk(outfile, 'IDAT', idat)
@@ -2227,11 +2229,11 @@ class Reader:
             raise FormatError("gAMA chunk has incorrect length.")
 
     def _process_iCCP(self, data):
-        i = data.index(chr(0))
+        i = data.index(zerobyte)
         self.iccp_name = data[:i]
         compression = data[i + 1]
         # TODO: Raise FormatError
-        assert compression == chr(0)
+        assert compression == zerobyte
         self.iccp = zlib.decompress(data[i + 2:])
 
     def _process_sBIT(self, data):
@@ -2242,32 +2244,45 @@ class Reader:
 
     def _process_tEXt(self, data):
         # http://www.w3.org/TR/PNG/#11tEXt
-        i = data.index(chr(0))
-        self.text[data[:i]] = data[i + 1:].decode('latin-1')
+        i = data.index(zerobyte)
+        keyword = data[:i]
+        try:
+            keyword = str(keyword, 'latin-1')
+        except:
+            pass
+        self.text[keyword] = data[i + 1:].decode('latin-1')
 
     def _process_zTXt(self, data):
         # http://www.w3.org/TR/PNG/#11zTXt
-        i = data.index(chr(0))
+        i = data.index(zerobyte)
         keyword = data[:i]
+        try:
+            keyword = str(keyword, 'latin-1')
+        except:
+            pass
         # TODO: Raise FormatError
-        assert data[i + 1] == chr(0)
+        assert (data[i + 1] == zerobyte or data[i + 1] == 0) 
         text = zlib.decompress(data[i + 2:]).decode('latin-1')
         self.text[keyword] = text
 
     def _process_iTXt(self, data):
         # http://www.w3.org/TR/PNG/#11iTXt
-        i = data.index(chr(0))
+        i = data.index(zerobyte)
         keyword = data[:i]
-        if data[i + 1] != chr(0):
+        try:
+            keyword = str(keyword, 'latin-1')
+        except:
+            pass
+        if data[i + 1] != zerobyte:
             # TODO: Support for compression!!
             return
         # TODO: Raise FormatError
-        assert data[i + 2] == chr(0)
+        assert (data[i + 2] == zerobyte or data[i + 2] == 0)
         data_ = data[i + 3:]
-        i = data_.index(chr(0))
+        i = data_.index(zerobyte)
         # skip language tag
         data_ = data_[i + 1:]
-        i = data_.index(chr(0))
+        i = data_.index(zerobyte)
         # skip translated keyword
         data_ = data_[i + 1:]
         self.text[keyword] = data_.decode('utf-8')
