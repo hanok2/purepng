@@ -1125,9 +1125,22 @@ class Writer:
                                     self.physical[1]))
         if self.text:
             for k, v in self.text.items():
-                if isinstance(v, unicode):
-                    v = v.encode('latin-1')
-                write_chunk(outfile, 'tEXt', k + strtobytes(chr(0)) + v)
+                if not isinstance(v, bytes):
+                    try:
+                        international = False
+                        v = v.encode('latin-1')
+                    except:
+                        international = True
+                        v = v.encode('utf-8')
+                else:
+                    international = False
+                if international:
+                    # No compress, language tag or translated keyword for now
+                    write_chunk(outfile, 'iTXt', k + strtobytes(chr(0)) +
+                                strtobytes(chr(0)) + strtobytes(chr(0)) +
+                                strtobytes(chr(0)) + strtobytes(chr(0)) + v)
+                else:
+                    write_chunk(outfile, 'tEXt', k + strtobytes(chr(0)) + v)
 
         for idat in idat_sequence:
             write_chunk(outfile, 'IDAT', idat)
@@ -2239,6 +2252,23 @@ class Reader:
         text = zlib.decompress(data[i + 2:]).decode('latin-1')
         self.text[keyword] = text
 
+    def _process_iTXt(self, data):
+        # http://www.w3.org/TR/PNG/#11iTXt
+        i = data.index(chr(0))
+        keyword = data[:i]
+        if data[i + 1] != chr(0):
+            # TODO: Support for compression!!
+            return
+        # TODO: Raise FormatError
+        assert data[i + 2] == chr(0)
+        data_ = data[i + 3:]
+        i = data_.index(chr(0))
+        # skip language tag
+        data_ = data_[i + 1:]
+        i = data_.index(chr(0))
+        # skip translated keyword
+        data_ = data_[i + 1:]
+        self.text[keyword] = data_.decode('utf-8')
 
     def _process_pHYs(self, data):
         # http://www.w3.org/TR/PNG/#11pHYs
