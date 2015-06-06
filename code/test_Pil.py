@@ -15,6 +15,11 @@ def safe_repr(obj, short=False):
         return result
     return result[:_MAX_LENGTH] + ' [truncated]...'
 
+try:
+    set
+except NameError:
+    from sets import Set as set
+    
 import unittest
 import pngsuite
 from PIL import Image
@@ -142,6 +147,14 @@ class BaseTest(unittest.TestCase):
             msg = self._formatMessage(msg, standardMsg)
             raise self.failureException(msg)
 
+    def assertDictEqual(self, d1, d2, msg=None):
+        self.assertIsInstance(d1, dict, 'First argument is not a dictionary')
+        self.assertIsInstance(d2, dict, 'Second argument is not a dictionary')
+        keys = set(d1.keys())
+        keys.union(set(d2.keys()))
+        for key_ in keys:
+            self.assertEqual(d1.get(key_), d2.get(key_))
+
     def compareImages(self, im1, im2):
         self.assertEqual(im1.size, im2.size)
         # Copy info before clean it as PIL may rely on this while reading
@@ -157,7 +170,7 @@ class BaseTest(unittest.TestCase):
             del info1['interlace']
         if 'interlace' in info2:
             del info2['interlace']
-        self.assertEqual(info1, info2)
+        self.assertDictEqual(info1, info2)
         # compare pixels
         if im1.mode != im2.mode or im1.mode == 'P':
             im1 = im1.convert('RGBA')

@@ -170,6 +170,13 @@ except ImportError:
     pass
 
 try:
+    long
+except NameError:
+    # No long in Python 3
+    long = int
+
+
+try:
     from itertools import imap as map
 
 except ImportError:
@@ -1117,7 +1124,7 @@ class Writer:
                                     self.physical[0][1],
                                     self.physical[1]))
         if self.text:
-            for k, v in self.text.iteritems():
+            for k, v in self.text.items():
                 if isinstance(v, unicode):
                     v = v.encode('latin-1')
                 write_chunk(outfile, 'tEXt', k + strtobytes(chr(0)) + v)
