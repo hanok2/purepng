@@ -78,19 +78,15 @@ Just try it with ``from png import PngImagePlugin``
 Benefit
 ^^^^^^^
 * PurePNG rely on python's zlib instead of PIL. So this plugin can be useful when PIL built without zlib support.
-* PurePNG handle ``sBIT`` chunk and rescale values.
+* PurePNG handle ``sBIT`` chunk and rescale values if it's not correctly rescaled on write.
 * PurePNG does not use separate palette or transparency when reading, providing full RGB and alpha channel instead.
 * PurePNG should write gamma
 
 Miss
 ^^^^
-* PurePNG does not save or read dpi
-* PurePNG does not save or read iccp profile
-* PurePNG does not save or read text chunks
 * PurePNG does not save custom chunks
 * PurePNG does not use zlib dictionary and method (compression level used)
 
-Most of these supposed to be added later.
 
 PurePNG compare to PyPNG
 ------------------------

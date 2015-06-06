@@ -70,7 +70,12 @@ point gamma value; this value is returned in the ``info`` dictionary:
 ``iCCP``
 ^^^^^^^^
 
-Ignored when reading.  Not generated.
+When reading a PNG image the ``iCCP`` chunk is saved as raw bytes and name.
+These data returned in the ``info`` dictionary: ``info['iccp']``, ``info['iccp_name']``.
+When writing, the ``iccp`` argument to the :meth:`png.Writer` class will
+generate a ``iCCP`` chunk, with name supplied in ``iccp_name`` argument
+or "ICC Profile" as default.
+
 
 ``sBIT``
 ^^^^^^^^
@@ -93,12 +98,18 @@ Ignored when reading.  Not generated.
 ``tEXt``
 ^^^^^^^^
 
-Ignored when reading.  Not generated.
+When reading a PNG image the ``tEXt`` chunks are converted to a dictionary
+of keywords and unicode values in the ``info`` dictionary: ``info['text']``.
+When writing, the ``text`` argument with same dict to the :meth:`png.Writer`
+class or arguments with registered keywords names will generate ``tEXt`` chunks.
 
 ``zTXt``
 ^^^^^^^^
 
-Ignored when reading.  Not generated.
+When reading a PNG image the ``zTXt`` chunks are converted to a dictionary
+of keywords and unicode values in the ``info`` dictionary: ``info['text']``.
+It's not possible to write ``zTXt`` chunsk for now, only ``tEXt`` will be
+written with ``text`` keyword.
 
 ``iTXt``
 ^^^^^^^^
@@ -120,7 +131,18 @@ Ignored when reading.  Not generated.
 ``pHYs``
 ^^^^^^^^
 
-Ignored when reading.  Not generated.
+When reading a PNG image the ``pHYs`` chunk is converted to form
+((<pixel_per_unit_x>, <pixel_per_unit_y>), <unit_is_meter>)
+This tuple is returned in the ``info`` dictionary:
+``info['physical']``. 
+When writing, the ``physical`` argument to the :meth:`png.Writer`
+class will generate a ``pHYs`` chunk. Argument could be tuple same as
+reading result, but also possible some usability modificatuion:
+* if both resolutions are same it could be written as single number instead of
+tuple: (<pixel_per_unit_x>, <unit_is_meter>)   
+* instead of <unit_is_meter> bool it's possible to use some unit specification:
+1. omit this part if no unit specified ((<pixel_per_unit_x>, <pixel_per_unit_y>), )
+2. use text name of unit (300, 'i') 'i', 'cm' and 'm' supported for now.
 
 ``sPLT``
 ^^^^^^^^
