@@ -153,7 +153,7 @@ class BaseTest(unittest.TestCase):
 
     def assertDictEqual(self, d1, d2, msg=None):
         keys = set(d1.keys())
-        keys.union(set(d2.keys()))
+        self.assertEqual(keys, set(d2.keys()))
         for key_ in keys:
             val1 = d1.get(key_)
             val2 = d2.get(key_)
