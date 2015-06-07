@@ -20,6 +20,11 @@ matrix:
       env: USE_CYTHON=yes
     - python: "pypy3"
       env: USE_CYTHON=yes
+    # Nympy now fail to install on PyPy
+    - python: "pypy"
+      env: USE_CYTHON=no
+    - python: "pypy3"
+      env: USE_CYTHON=no
 
 install:
   - pip install pillow
