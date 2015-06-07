@@ -15,9 +15,12 @@ suite_file = tarfile.open(os.path.join(os.path.dirname(__file__),
                                        "PngSuite-2013jan13.tgz"))
 
 # Suite by names, but skip error tests and size(unsupported yet)
+# Also skip national encoding
 suite_files_b = [(splitext(f)[0], suite_file.extractfile(f))
                for f in suite_file.getnames() if
-               (not f.startswith('x'))]
+               not (f.startswith('x') or f.startswith('ctf') or
+                    f.startswith('cth') or f.startswith('ctj') or
+                    f.startswith('ctg'))]
 png = dict(suite_files_b)
 # test one file like this:
 # png = {'tesst': suite_file.extractfile('ctzn0g04.png')}
