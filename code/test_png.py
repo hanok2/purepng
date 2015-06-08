@@ -590,6 +590,59 @@ class Test(unittest.TestCase):
             return (chunk[0], data)
         self.assertRaises(png.FormatError, self.helperFormat, eachchunk)
 
+    def testBadChecksum(self):
+        # Incorrect header checksum
+        pngsuite.png['xhdn0g08'].seek(0)
+        r = png.Reader(pngsuite.png['xhdn0g08'])
+        self.assertRaises(png.ChunkError, r.asDirect)
+        # Incorrect IDAT checksum
+        pngsuite.png['xcsn0g01'].seek(0)
+        r = png.Reader(pngsuite.png['xcsn0g01'])
+        pixels = r.asDirect()[2]
+        self.assertRaises(png.FormatError, list, pixels)
+
+    def testBadSignature(self):
+        # signature byte 1 MSBit reset to zero
+        pngsuite.png['xs1n0g01'].seek(0)
+        r = png.Reader(pngsuite.png['xs1n0g01'])
+        self.assertRaises(png.FormatError, r.asDirect)
+        # signature byte 2 is a 'Q'
+        pngsuite.png['xs2n0g01'].seek(0)
+        r = png.Reader(pngsuite.png['xs2n0g01'])
+        self.assertRaises(png.FormatError, r.asDirect)
+        # signature byte 4 lowercase
+        pngsuite.png['xs4n0g01'].seek(0)
+        r = png.Reader(pngsuite.png['xs4n0g01'])
+        self.assertRaises(png.FormatError, r.asDirect)
+        # 7th byte a space instead of control-Z
+        pngsuite.png['xs7n0g01'].seek(0)
+        r = png.Reader(pngsuite.png['xs7n0g01'])
+        self.assertRaises(png.FormatError, r.asDirect)
+
+    def testBadColour(self):
+        # color type 1
+        pngsuite.png['xc1n0g08'].seek(0)
+        r = png.Reader(pngsuite.png['xc1n0g08'])
+        self.assertRaises(png.FormatError, r.asDirect)
+        # color type 9
+        pngsuite.png['xc9n2c08'].seek(0)
+        r = png.Reader(pngsuite.png['xc9n2c08'])
+        self.assertRaises(png.FormatError, r.asDirect)
+
+    def testBadDepth(self):
+        # bit-depth 0
+        pngsuite.png['xd0n2c08'].seek(0)
+        r = png.Reader(pngsuite.png['xd0n2c08'])
+        self.assertRaises(png.FormatError, r.asDirect)
+        # bit-depth 3
+        pngsuite.png['xd3n2c08'].seek(0)
+        r = png.Reader(pngsuite.png['xd3n2c08'])
+        self.assertRaises(png.FormatError, r.asDirect)
+        # bit-depth 99
+        pngsuite.png['xd9n2c08'].seek(0)
+        r = png.Reader(pngsuite.png['xd9n2c08'])
+        self.assertRaises(png.FormatError, r.asDirect)
+
     def helperFormat(self, f):
         pngsuite.basn0g01.seek(0)
         r = png.Reader(pngsuite.basn0g01)
