@@ -906,6 +906,9 @@ class Writer:
         transparent = check_color(transparent, greyscale, 'transparent')
         background = check_color(background, greyscale, 'background')
         if physical is not None:
+            # All in row
+            if len(physical) == 3:
+                physical = ((physical[0], physical[1]), physical[2])
             # Ensure length and convert all false to 0 (no unit)
             if len(physical) == 1 or not physical[1]:
                 physical = (physical[0], 0)

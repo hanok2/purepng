@@ -140,7 +140,9 @@ When writing, the ``physical`` argument to the :meth:`png.Writer`
 class will generate a ``pHYs`` chunk. Argument could be tuple same as
 reading result, but also possible some usability modificatuion:
 * if both resolutions are same it could be written as single number instead of
-tuple: (<pixel_per_unit_x>, <unit_is_meter>)   
+tuple: (<pixel_per_unit_x>, <unit_is_meter>) 
+* all three  parameters could be written in row:
+(<pixel_per_unit_x>, <pixel_per_unit_y>, <unit_is_meter>)
 * instead of <unit_is_meter> bool it's possible to use some unit specification:
 1. omit this part if no unit specified ((<pixel_per_unit_x>, <pixel_per_unit_y>), )
 2. use text name of unit (300, 'i') 'i', 'cm' and 'm' supported for now.
