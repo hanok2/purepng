@@ -2273,7 +2273,7 @@ class Reader:
             keyword = str(keyword, 'latin-1')
         except:
             pass
-        if data[i + 1] != zerobyte:
+        if (data[i + 1] != zerobyte and data[i + 1] != 0):
             # TODO: Support for compression!!
             return
         # TODO: Raise FormatError
