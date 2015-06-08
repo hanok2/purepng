@@ -104,7 +104,7 @@ class PngImageFile(ImageFile.ImageFile):
         if 'gamma' in meta:
             self.info['gamma'] = meta['gamma']
         if 'icc_profile' in meta:
-            self.info['icc_profile'] = meta['iccp']
+            self.info['icc_profile'] = meta['icc_profile']
         if 'physical' in meta:
             if meta['physical'][1] == 1:
                 self.info['dpi'] = (int(meta['physical'][0][0] * 0.0254 + 0.5),

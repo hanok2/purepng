@@ -673,8 +673,8 @@ class Writer:
                  maxval=None,
                  chunk_limit=2 ** 20,
                  filter_type=None,
-                 iccp=None,
-                 iccp_name="ICC Profile",
+                 icc_profile=None,
+                 icc_profile_name="ICC Profile",
                  physical=None,
                  text=None,
                  **kwargs
@@ -711,10 +711,10 @@ class Writer:
           Write multiple ``IDAT`` chunks to save memory.
         filter_type
           Enable and specify PNG filter
-        iccp
-          Write ICCP
-        iccp_name
-          Name for ICCP
+        icc_profile
+          Write ICC Profile
+        icc_profile_name
+          Name for ICC Profile
         physical
           Physical parameters of pixel
         The image size (in pixels) can be specified either by using the
@@ -965,11 +965,12 @@ class Writer:
         self.transparent = transparent
         self.background = background
         self.gamma = gamma
-        self.iccp = iccp
-        if iccp:
-            self.iccp_name = strtobytes(iccp_name)
-            if not self.iccp_name:
+        self.icc_profile = icc_profile
+        if icc_profile:
+            if not icc_profile_name:
                 raise Error("ICC profile shoud have a name")
+            else:
+                self.icc_profile_name = strtobytes(icc_profile_name)
         self.physical = physical
         self.greyscale = bool(greyscale)
         self.alpha = bool(alpha)
@@ -1077,11 +1078,11 @@ class Writer:
                         struct.pack("!L", int(round(self.gamma*1e5))))
         # See :chunk:order
         # http://www.w3.org/TR/PNG/#11iCCP
-        if self.iccp is not None:
+        if self.icc_profile is not None:
             write_chunk(outfile, 'iCCP',
-                        self.iccp_name + zerobyte +
+                        self.icc_profile_name + zerobyte +
                         zerobyte +
-                        zlib.compress(self.iccp, self.compression))
+                        zlib.compress(self.icc_profile, self.compression))
         # See :chunk:order
         # http://www.w3.org/TR/PNG/#11sBIT
         if self.rescale:
@@ -2230,11 +2231,11 @@ class Reader:
 
     def _process_iCCP(self, data):
         i = data.index(zerobyte)
-        self.iccp_name = data[:i]
+        self.icc_profile_name = data[:i]
         compression = data[i + 1]
         # TODO: Raise FormatError
-        assert compression == zerobyte
-        self.iccp = zlib.decompress(data[i + 2:])
+        assert (compression == zerobyte or compression == 0)
+        self.icc_profile = zlib.decompress(data[i + 2:])
 
     def _process_sBIT(self, data):
         self.sbit = data
@@ -2356,7 +2357,7 @@ class Reader:
             meta[attr] = getattr(self, attr)
         meta['size'] = (self.width, self.height)
         for attr in ('gamma', 'transparent', 'background',
-                     'iccp', 'iccp_name', 'physical', 'text'):
+                     'icc_profile', 'icc_profile_name', 'physical', 'text'):
             a = getattr(self, attr, None)
             if a is not None:
                 meta[attr] = a

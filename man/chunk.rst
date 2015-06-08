@@ -71,10 +71,11 @@ point gamma value; this value is returned in the ``info`` dictionary:
 ^^^^^^^^
 
 When reading a PNG image the ``iCCP`` chunk is saved as raw bytes and name.
-These data returned in the ``info`` dictionary: ``info['iccp']``, ``info['iccp_name']``.
-When writing, the ``iccp`` argument to the :meth:`png.Writer` class will
-generate a ``iCCP`` chunk, with name supplied in ``iccp_name`` argument
-or "ICC Profile" as default.
+These data returned in the ``info`` dictionary: ``info['icc_profile']``,
+``info['icc_profile_name']``.
+When writing, the ``icc_profile`` argument to the :meth:`png.Writer` class
+will generate a ``iCCP`` chunk, with name supplied in ``icc_profile_name``
+argument or "ICC Profile" as default.
 
 
 ``sBIT``
