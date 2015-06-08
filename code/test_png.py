@@ -303,9 +303,10 @@ class Test(unittest.TestCase):
         """
         # Not such a great test, because the only way we can check what
         # we have written is to read it back again.
+        # Check different modes: default by number; default by name;
+        #                        adaptive by name; adaptive by dict
         for filtertype in (0, 1, 2, 'average', 'paeth',
-                           {'name': 'sum'},
-                           {'name': 'entropy'}):
+                           'sum', {'name': 'entropy'}):
             for name, file_ in pngsuite.png.items():
                 # Only certain colour types supported for this test.
                 if name[3:5] not in ['n0', 'n2', 'n4', 'n6'] or\
@@ -493,6 +494,34 @@ class Test(unittest.TestCase):
         r = png.Reader(file=pngsuite.png['basn2c16'])
         info = r.read()[3]
         w = png.Writer(**info)
+
+    def testText(self):
+        """Test text information saving and retrieving
+        """
+        # Use image as core for text
+        pngsuite.png['basn2c16'].seek(0)
+        r = png.Reader(file=pngsuite.png['basn2c16'])
+        x, y, pixels, info = r.read()
+
+        text = {'Software': 'PurePNG library',
+                'Source': 'PNGSuite',
+                'Comment': 'Text information test'}
+        # Embedded keyword test
+        info_e = info
+        info_e.update(text)
+        test_e = topngbytes('text_e.png', pixels, x, y, **info_e)
+        x, y, pixels, info_r = png.Reader(bytes=test_e).read()
+        self.assertEqual(text, info_r.get('text'))
+
+        # Separate argument test
+        info_a = info
+        info_a['text'] = text
+        # Here we can use any keyword, not only registered
+        info_a['text']['Goddamn'] = 'I can do ANYTHING!'
+        test_a = topngbytes('text_a.png', pixels, x, y, **info_a)
+        x, y, pixels, info_r = png.Reader(bytes=test_a).read()
+        self.assertEqual(text, info_r.get('text'))
+
     def testPackedIter(self):
         """Test iterator for row when using write_packed.
 
