@@ -303,8 +303,8 @@ class Test(unittest.TestCase):
         """
         # Not such a great test, because the only way we can check what
         # we have written is to read it back again.
-        for filtertype in (0, 1, 2, 3, 4,\
-                           {'name': 'sum'},\
+        for filtertype in (0, 1, 2, 'average', 'paeth',
+                           {'name': 'sum'},
                            {'name': 'entropy'}):
             for name, file_ in pngsuite.png.items():
                 # Only certain colour types supported for this test.
