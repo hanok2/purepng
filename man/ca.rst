@@ -25,8 +25,8 @@ Comparison to other PNG tools
 
 The most obvious "competitor" to PurePNG is PIL.  Depending on what job
 you want to do you might also want to use Netpbm (PurePNG can convert to
-and from the Netpbm PNM format), or use :py:mod:`ctypes` to interface directly to a
-compiled version of libpng.  If you know of others, let me know.
+and from the Netpbm PNM format), or use :py:mod:`ctypes` to interface directly
+to a compiled version of libpng.  If you know of others, let me know.
 
 PIL's focus is not PNG.  PIL's focus is image processing, and this is where 
 PurePNG sucks.  If you want to actually process an image---resize, rotate,
@@ -64,7 +64,7 @@ installation.  Just use ``python setup.py install``.
 
 There is also "light" mode: you can just copy the :download:`../code/png/png.py` 
 file.  You can even `curl` it straight into wherever you need it:
-``curl -O https://raw.githubusercontent.com/Scondo/purepng/master/code/png/png.py``.
+``curl -LO https://raw.githubusercontent.com/Scondo/purepng/master/code/png/png.py``.
 This "light" module mode contains all features required for PNG reading and
 writing, while "full" package mode contains extra features like Cython speedup,
 other format support, PIL plugin etc.

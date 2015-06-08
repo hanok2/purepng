@@ -24,15 +24,10 @@ Done
 * Rows in boxed flat row now may be any buffer-compatible, not only array.
 * Python 2.2 support removed.
 * PIL plugin
+* Raw iCCP read/write
+* Text information (read tEXt and zTXt, write tEXt, partitially iTXt )
+* pHYs support
 
-Planned
-^^^^^^^
-* Rework pngsuite to reading from files and use more images
-* iCCP and pHYs chunks support to enhsnce compatibility wit PIL
-
-Release
-^^^^^^^
-Suppose 0.1 will provide stable interface before end of 2014. And after few month will be released as 0.2.
 
 Future
 ------

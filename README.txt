@@ -39,7 +39,7 @@ It's intended that you can copy png.py into your application and distribute
 it. The following "curl" command should copy the latest version into your
 current directory:
 
-curl -O https://raw.github.com/scondo/purepng/master/code/png.py
+curl -LO https://raw.github.com/scondo/purepng/master/code/png.py
 
 
 MIGRATION FROM PYPNG
@@ -67,6 +67,10 @@ Add optional filtering on save.
 Module/package duality
 Python 2/3 polyglot (and partitial Cython)
 Using bytearray when possible.
+Raw iCCP read/write
+Text information (read tEXt and zTXt, write tEXt, partitially iTXt )
+pHYs support
+PIL plugin
 
 (For issues see https://github.com/scondo/purepng/issues?state=open )
 

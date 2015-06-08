@@ -115,7 +115,10 @@ written with ``text`` keyword.
 ``iTXt``
 ^^^^^^^^
 
-Ignored when reading.  Not generated.
+When reading append to ``text`` info same as  ``tEXt`` or ``zTXt``,
+translated keyword and language tags ignored.
+
+Keywords within ``text`` that does not fit latin-1 will be saved as ``iTXt``
 
 ``bKGD``
 ^^^^^^^^
