@@ -16,17 +16,12 @@ suite_file = tarfile.open(os.path.join(os.path.dirname(__file__),
 png = dict([(splitext(f)[0], suite_file.extractfile(f))
             for f in suite_file.getnames()])
 # Extra png test by drj
-drj_file = tarfile.open(os.path.join(os.path.dirname(__file__),
-                                     "DrjExtraSuite.tgz"))
-drj_png = dict([(splitext(f)[0], drj_file.extractfile(f))
-            for f in drj_file.getnames()])
-png.update(drj_png)
 # Gamma test from libpng.org (single colour)
-gamma_file = tarfile.open(os.path.join(os.path.dirname(__file__),
-                                     "gamma.tgz"))
-gamma_png = dict([(splitext(f)[0], drj_file.extractfile(f))
-            for f in drj_file.getnames()])
-png.update(gamma_png)
+extra_file = tarfile.open(os.path.join(os.path.dirname(__file__),
+                                       "ExtraSuite.tgz"))
+extra_png = dict([(splitext(f)[0], extra_file.extractfile(f))
+            for f in extra_file.getnames()])
+png.update(extra_png)
 # test one file like this:
 # png = {'tesst': suite_file.extractfile('ctzn0g04.png')}
 
