@@ -183,7 +183,7 @@ except ImportError:
     # On Python 3 there is no imap, but map works like imap instead
     pass
 
-__all__ = ['Image', 'Reader', 'Writer',
+__all__ = ['png_signature','Image', 'Reader', 'Writer',
            'Error', 'FormatError', 'ChunkError',
            'Filter', 'register_extra_filter',
            'write_chunks', 'from_array',
@@ -192,7 +192,7 @@ __all__ = ['Image', 'Reader', 'Writer',
 
 # The PNG signature.
 # http://www.w3.org/TR/PNG/#5PNG-file-signature
-_signature = struct.pack('8B', 137, 80, 78, 71, 13, 10, 26, 10)
+png_signature = struct.pack('8B', 137, 80, 78, 71, 13, 10, 26, 10)
 
 _adam7 = ((0, 0, 8, 8),
           (4, 0, 8, 8),
@@ -1066,7 +1066,7 @@ class Writer:
         """
 
         # http://www.w3.org/TR/PNG/#5PNG-file-signature
-        outfile.write(_signature)
+        outfile.write(png_signature)
 
         # http://www.w3.org/TR/PNG/#11IHDR
         write_chunk(outfile, 'IHDR',
@@ -1415,7 +1415,7 @@ def write_chunk(outfile, tag, data=bytes()):
 def write_chunks(out, chunks):
     """Create a PNG file by writing out the chunks."""
 
-    out.write(_signature)
+    out.write(png_signature)
     for chunk in chunks:
         write_chunk(out, *chunk)
 
@@ -2070,7 +2070,7 @@ class Reader:
         if self.signature:
             return
         self.signature = self.file.read(8)
-        if self.signature != _signature:
+        if self.signature != png_signature:
             raise FormatError("PNG file has invalid signature.")
 
     def preamble(self, lenient=False):

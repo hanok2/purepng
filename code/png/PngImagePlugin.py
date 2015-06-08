@@ -271,7 +271,8 @@ def _save(im, fp, filename):
 
 # --------------------------------------------------------------------
 # Registry
-Image.register_open("PNG", PngImageFile)
+Image.register_open("PNG", PngImageFile,
+                    lambda header: header[:8] == png.png_signature)
 Image.register_save("PNG", _save)
 
 Image.register_extension("PNG", ".png")
