@@ -25,6 +25,7 @@ install:
   - pip install pillow
   - pip install -r pip_numpy.txt
   - pip install coverage
+  - pip install coveralls
 
 # This is install in fact, yet conditional
 before_script:
@@ -34,3 +35,6 @@ script:
   # Will be built if cython installed
   - python setup.py build_ext --inplace
   - nosetests code --with-coverage --cover-package=png
+
+after_success:
+  coveralls
