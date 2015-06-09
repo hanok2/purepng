@@ -170,13 +170,6 @@ except ImportError:
     pass
 
 try:
-    long
-except NameError:
-    # No long in Python 3
-    long = int
-
-
-try:
     from itertools import imap as map
 
 except ImportError:
@@ -913,7 +906,7 @@ class Writer:
             if len(physical) == 1 or not physical[1]:
                 physical = (physical[0], 0)
             # Single dimension
-            if isinstance(physical[0], (int, long, float)):
+            if isinstance(physical[0], float) or isinteger(physical[0]):
                 physical = ((physical[0], physical[0]), physical[1])
             # Unit conversion
             if physical[1] in (1, 'm', 'meter'):
