@@ -34,6 +34,12 @@ except ImportError:
     pass
 
 try:
+    from functools import reduce
+except ImportError:
+    # suppose to get there on python<2.7 where reduce is only built-in function
+    pass
+
+try:
     from png import array
 except ImportError:
     # It's not worth add array to Py3 import when no need for hacks
@@ -526,15 +532,18 @@ class Test(unittest.TestCase):
                 'Comment': 'Text information test'}
         # Simple unicode test
         try:
-            text['Author'] = eval("u'Pavel Zlatovratskii'")
-        except SyntaxError:
-            text['Author'] = 'Pavel Zlatovratskii'
-        # Non-latin unicode test
+            unic = unichr
+        except NameError:
+            unic = chr
+        # Unicode only by type should be saved to tEXt
+        text['Author'] = strtobytes('Pavel Zlatovratskii').decode('latin-1')
+        # Non-latin unicode should go to iTXt
         # 'Be careful with unicode!' in russian.
-        try:
-            text['Warning'] = eval("u'Осторожней с юникодом!'")
-        except SyntaxError:
-            text['Warning'] = 'Осторожней с юникодом!'
+        text['Warning'] = reduce(lambda x, y: x + unic(y),
+                                 (1054, 1089, 1090, 1086, 1088, 1086, 1078,
+                                  1085, 1077, 1081, 32, 1089, 32, 1102, 1085,
+                                  1080, 1082, 1086, 1076, 1086, 1084, 33),
+                                 '')
         # Embedded keyword test
         info_e = info
         info_e.update(text)
