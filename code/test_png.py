@@ -1,3 +1,5 @@
+# encoding: utf-8
+
 # This file comprises the tests that are internally validated (as
 # opposed to tests which produce output files that are externally
 # validated).  Primarily they are unittests.
@@ -506,6 +508,17 @@ class Test(unittest.TestCase):
         text = {'Software': 'PurePNG library',
                 'Source': 'PNGSuite',
                 'Comment': 'Text information test'}
+        # Simple unicode test
+        try:
+            text['Author'] = eval("u'Pavel Zlatovratskii'")
+        except SyntaxError:
+            text['Author'] = 'Pavel Zlatovratskii'
+        # Non-latin unicode test
+        # 'Be careful with unicode!' in russian.
+        try:
+            text['Warning'] = eval("u'Осторожней с юникодом!'")
+        except SyntaxError:
+            text['Warning'] = 'Осторожней с юникодом!'
         # Embedded keyword test
         info_e = info
         info_e.update(text)
