@@ -15,16 +15,15 @@ def do_unimport(folder=''):
         pass
     new = open(join(folder, 'pngfilters.py'), 'w')
 
-    #Fixed part
-    #Cython directives
+    # Fixed part
+    # Cython directives
     new.write('#cython: boundscheck=False\n')
     new.write('#cython: wraparound=False\n')
-    #global const
 
     go = False
     for line in src:
         if line.startswith('class') and\
-            (line.startswith('class BaseFilter')):
+          (line.startswith('class BaseFilter')):
             go = True
         elif not (line.startswith('   ') or line.strip() == ''):
             go = False

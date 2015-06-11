@@ -144,8 +144,6 @@ And now, my famous members
 --------------------------
 """
 
-__version__ = "0.1.1"
-
 from array import array
 import itertools
 import logging
@@ -171,12 +169,12 @@ except ImportError:
 
 try:
     from itertools import imap as map
-
 except ImportError:
     # On Python 3 there is no imap, but map works like imap instead
     pass
 
-__all__ = ['png_signature','Image', 'Reader', 'Writer',
+__version__ = "0.1.1"
+__all__ = ['png_signature', 'Image', 'Reader', 'Writer',
            'Error', 'FormatError', 'ChunkError',
            'Filter', 'register_extra_filter',
            'write_chunks', 'from_array',
@@ -246,7 +244,7 @@ try:
 except NameError:
     # bytearray does not exist. We're probably < Python 2.6 (the
     # version in which bytearray appears).
-    def bytearray(src=[]):
+    def bytearray(src=tuple()):
         return array('B', src)
 
     def newBarray(length=0):
@@ -382,7 +380,7 @@ def check_color(c, greyscale, which):
         return c
     if greyscale:
         try:
-            l = len(c)
+            len(c)
         except TypeError:
             c = (c,)
         if len(c) != 1:
@@ -588,13 +586,12 @@ class BaseFilter:
 
         assert 0 <= filter_type < 5
         if self.prev is None:
-        # We're on the first line.  Some of the filters can be reduced
-        # to simpler cases which makes handling the line "off the top"
-        # of the image simpler.  "up" becomes "none"; "paeth" becomes
-        # "left" (non-trivial, but true). "average" needs to be handled
-        # specially.
+            # We're on the first line.  Some of the filters can be reduced
+            # to simpler cases which makes handling the line "off the top"
+            # of the image simpler.  "up" becomes "none"; "paeth" becomes
+            # "left" (non-trivial, but true). "average" needs to be handled
+            # specially.
             if filter_type == 2:  # "up"
-                #return line
                 filter_type = 0
             elif filter_type == 3:
                 self.prev = newBarray(len(line))
@@ -1128,7 +1125,7 @@ class Writer:
                     try:
                         international = False
                         v = v.encode('latin-1')
-                    except:
+                    except UnicodeEncodeError:
                         international = True
                         v = v.encode('utf-8')
                 else:
@@ -1178,7 +1175,7 @@ class Writer:
             # Pack into bytes
             assert self.bitdepth < 8
             # samples per byte
-            spb = int(8/self.bitdepth)
+            spb = 8 // self.bitdepth
             def extend(sl):
                 a = bytearray(sl)
                 # Adding padding bytes so we can group into a whole
@@ -1402,7 +1399,7 @@ def write_chunk(outfile, tag, data=bytes()):
     outfile.write(data)
     checksum = zlib.crc32(tag)
     checksum = zlib.crc32(data, checksum)
-    checksum &= 2**32-1
+    checksum &= 0xFFFFFFFF
     outfile.write(struct.pack("!I", checksum))
 
 def write_chunks(out, chunks):
