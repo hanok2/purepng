@@ -663,7 +663,6 @@ class Writer:
                  gamma=None,
                  compression=None,
                  interlace=False,
-                 maxval=None,
                  chunk_limit=2 ** 20,
                  filter_type=None,
                  icc_profile=None,
@@ -946,9 +945,10 @@ class Writer:
         # its purpose is to act as a dummy so that
         # ``Writer(x, y, **info)`` works, where `info` is a dictionary
         # returned by Reader.read and friends.
-        # Ditto for `colormap`.
+        # Ditto for `colormap` and `maxval`.
         kwargs.pop('planes', None)
         kwargs.pop('colormap', None)
+        kwargs.pop('maxval', None)
 
         if kwargs:
             warnings.warn("Unknown writer args: " + str(kwargs))
