@@ -1690,17 +1690,11 @@ def from_array(a, mode=None, info=None):
         if info['planes'] != planes:
             raise Error("info['planes'] should match mode.")
 
-    # Fill in and/or check entries in *info*.
     # Dimensions.
     if 'size' in info:
-        # Check width, height, size all match where used.
-        for dimension,axis in [('width', 0), ('height', 1)]:
-            if dimension in info:
-                if info[dimension] != info['size'][axis]:
-                    raise Error(
-                      "info[%r] should match info['size'][%r]." %
-                      (dimension, axis))
-        info['width'],info['height'] = info['size']
+        info['width'], info['height'] = check_sizes(info.get('size'),
+                                                    info.get('width'),
+                                                    info.get('height'))
     if 'height' not in info:
         try:
             l = len(a)
