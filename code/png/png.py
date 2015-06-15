@@ -1539,13 +1539,10 @@ def parse_mode(mode, default_bitdepth=None):
     '''Parse PIL-style mode and return tuple (grayscale, alpha, bitdeph)
     or None if it's not possible to decode mode
     '''
-    if mode is None:
-        return None
-
     # few special cases
     if mode == 'P':
         # Don't know what is pallette
-        return None
+        raise Error('Unknown colour mode:' + mode)
     elif mode == '1':
         # Logical
         return (True, False, 1)
@@ -1567,6 +1564,7 @@ def parse_mode(mode, default_bitdepth=None):
         mode = mode[1:]
     else:
         alpha = False
+
     bitdepth = default_bitdepth
     if mode.startswith(';'):
         try:
@@ -1668,17 +1666,14 @@ def from_array(a, mode=None, info=None):
 
     # Syntax check mode string.
     parsed_mode = parse_mode(mode)
-    if parsed_mode is None:
-        (grayscale, alpha, bitdepth) = (None, None, None)
-    else:
-        (grayscale, alpha, bitdepth) = parsed_mode
+    grayscale, alpha, bitdepth = parsed_mode
 
     # Colour format.
-    if 'greyscale' in info and grayscale is not None:
+    if 'greyscale' in info:
         if bool(info['greyscale']) != grayscale:
             raise Error("info['greyscale'] should match mode.")
     info['greyscale'] = grayscale
-    if 'alpha' in info and alpha is not None:
+    if 'alpha' in info:
         if bool(info['alpha']) != alpha:
             raise Error("info['alpha'] should match mode.")
     info['alpha'] = alpha
@@ -1690,14 +1685,9 @@ def from_array(a, mode=None, info=None):
               (bitdepth, info['bitdepth']))
         info['bitdepth'] = bitdepth
 
-    if grayscale is not None and alpha is not None:
-        planes = (3, 1)[grayscale] + alpha
-    else:
-        planes = None
+    planes = (3, 1)[grayscale] + alpha
     if 'planes' in info:
-        if planes is None:
-            planes = info['planes']
-        elif info['planes'] != planes:
+        if info['planes'] != planes:
             raise Error("info['planes'] should match mode.")
 
     # Fill in and/or check entries in *info*.

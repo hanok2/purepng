@@ -151,8 +151,8 @@ def _save(im, fp, filename):
             yield row
     # Default values
     meta = dict(im.info)
-    parsed_mode = png.parse_mode(im.mode, 8)
-    if parsed_mode is not None:
+    if im.mode != 'P':
+        parsed_mode = png.parse_mode(im.mode, 8)
         (meta['greyscale'], meta['alpha'], bits) = parsed_mode
         if bits == 1:
             fullrows = rows
@@ -160,10 +160,6 @@ def _save(im, fp, filename):
             def rows(im):
                 for row in fullrows(im):
                     yield [bool(it) for it in row]
-
-    else:
-        if im.mode != 'P':
-            raise png.Error('Unsupported mode:' + im.mode)
 
     if im.mode == "P":
         palette_bytes = im.palette.getdata()[1]
