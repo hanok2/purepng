@@ -1,4 +1,6 @@
 """
+PurePNG core self-test
+
 This file comprises the tests that are internally validated (as
 opposed to tests which produce output files that are externally
 validated).  Primarily they are unittests.
@@ -6,9 +8,12 @@ validated).  Primarily they are unittests.
 Note that it is difficult to internally validate the results of
 writing a PNG file.  The only thing we can do is read it back in
 again, which merely checks consistency, not that the PNG file we
-produce is valid."""
+produce is valid.
+"""
 
 from __future__ import generators
+import logging
+# logging.getLogger().setLevel(logging.INFO)
 
 # (For an in-memory binary file IO object) We use BytesIO where
 # available, otherwise we use StringIO, but name it BytesIO.
@@ -64,40 +69,22 @@ except NameError:
     except NameError:
         buffer = buf_emu
 
-try:
-    import logging
-    #logging.getLogger().setLevel(logging.INFO)
-except ImportError:
-    #Suppose to work in 2.2
-    def warning(message):
-        message = "WRNG: "
-        #this trick used to avoid syntax error in python3
-        exec("print >>sys.stderr, message", globals(), locals())
-
-    def info(message):
-        message = "Info: "
-        #this trick used to avoid syntax error in python3
-        exec("print >>sys.stderr, message", globals(), locals())
-
-    class logging:
-        warning = staticmethod(warning)
-        info = staticmethod(info)
-
 
 def group(s, n):
+    """Repack iterator items into groups"""
     # See http://www.python.org/doc/2.6/library/functions.html#zip
     return list(zip(*[iter(s)] * n))
 
 
 def topngbytes(name, rows, x, y, **k):
     """
-    Convenience function for creating a PNG file "in memory" as
-    a string.  Creates a :class:`Writer` instance using the keyword
-    arguments, then passes `rows` to its :meth:`Writer.write` method.
+    Convenience function for creating a PNG file "in memory" as a string.
+
+    Creates a :class:`Writer` instance using the keyword arguments, then
+    passes `rows` to its :meth:`Writer.write` method.
     The resulting PNG file is returned as a string.  `name` is used
     to identify the file for debugging.
     """
-
     import os
 
     logging.info(name)
@@ -110,10 +97,13 @@ def topngbytes(name, rows, x, y, **k):
         w.close()
     return f.getvalue()
 
+
 def _redirect_io(inp, out, f):
-    """Calls the function `f` with ``sys.stdin`` changed to `inp`
-    and ``sys.stdout`` changed to `out`.  They are restored when `f`
-    returns.  This function returns whatever `f` returns.
+    """
+    Calls the function `f` redirecting stdin and stdout to `inp` and `out`.
+
+    They are restored when `f` returns.
+    This function returns whatever `f` returns.
     """
 
     import os
@@ -133,8 +123,11 @@ def _redirect_io(inp, out, f):
             w.close()
     return x
 
+
 def mycallersname():
-    """Returns the name of the caller of the caller of this function
+    """
+    Returns the name of the caller of the caller of this function
+
     (hence the name of the caller of the function in which
     "mycallersname()" textually appears).  Returns None if this cannot
     be determined.
@@ -151,13 +144,17 @@ def mycallersname():
 
 
 def seqtobytes(s):
-    """Convert a sequence of integers to a *bytes* instance.  Good for
-    plastering over Python 2 / Python 3 cracks.
+    """
+    Convert a sequence of integers to a *bytes* instance.
+
+    Good for plastering over Python 2 / Python 3 cracks.
     """
     return strtobytes(''.join([chr(x) for x in s]))
 
 
 class Test(unittest.TestCase):
+    """Main test unit"""
+
     # This member is used by the superclass.  If we don't define a new
     # class here then when we use self.assertRaises() and the PurePNG code
     # raises an assertion then we get no proper traceback.  I can't work
@@ -167,37 +164,42 @@ class Test(unittest.TestCase):
         pass
 
     def helperLN(self, n):
+        """Helper for L-tests"""
         mask = (1 << n) - 1
-        # Use small chunk_limit so that multiple chunk writing is
-        # tested.  Making it a test for Issue 20.
+        # Use small chunk_limit so that multiple chunk writing is tested.
         w = png.Writer(15, 17, greyscale=True, bitdepth=n, chunk_limit=99)
         f = BytesIO()
         w.write_array(f, array('B', [mask & it for it in range(1, 256)]))
         r = png.Reader(bytes=f.getvalue())
-        x,y,pixels,meta = r.read()
+        x, y, pixels, _ = r.read()
         self.assertEqual(x, 15)
         self.assertEqual(y, 17)
         self.assertEqual(list(itertools.chain(*pixels)),
                          [mask & it for it in range(1, 256)])
 
     def testL8(self):
+        """Test L with depth 8"""
         return self.helperLN(8)
+
     def testL4(self):
+        """Test L with depth 4"""
         return self.helperLN(4)
+
     def testL2(self):
-        "Also tests asRGB8."
+        """Test L with depth 2. Also tests asRGB8."""
         w = png.Writer(1, 4, greyscale=True, bitdepth=2)
         f = BytesIO()
         w.write_array(f, array('B', range(4)))
         r = png.Reader(bytes=f.getvalue())
-        x,y,pixels,meta = r.asRGB8()
+        x, y, pixels, _ = r.asRGB8()
         self.assertEqual(x, 1)
         self.assertEqual(y, 4)
-        for i,row in enumerate(pixels):
+        for i, row in enumerate(pixels):
             self.assertEqual(len(row), 3)
             self.assertEqual(list(row), [0x55*i]*3)
+
     def testP2(self):
-        "2-bit palette."
+        """2-bit palette."""
         a = (255,255,255)
         b = (200,120,120)
         c = (50,99,50)
@@ -211,7 +213,7 @@ class Test(unittest.TestCase):
         self.assertEqual([list(p) for p in pixels], [list(p) for p in (a, b, b, c)])
 
     def testPtrns(self):
-        "Test colour type 3 and tRNS chunk (and 4-bit palette)."
+        """Test colour type 3 and tRNS chunk (and 4-bit palette)."""
         a = (50,99,50,50)
         b = (200,120,120,80)
         c = (255,255,255)
@@ -233,12 +235,11 @@ class Test(unittest.TestCase):
                          [list(it) for it in flat])
 
     def testRGBtoRGBA(self):
-        "asRGBA8() on colour type 2 source."""
-        # Test for Issue 26
+        """asRGBA8() on colour type 2 source."""
         # Also test that png.Reader can take a "file-like" object.
-        pngsuite.basn2c08.seek(0)
+        pngsuite.png["basn2c08"].seek(0)
         r = png.Reader(pngsuite.basn2c08)
-        x,y,pixels,meta = r.asRGBA8()
+        x, y, pixels, meta = r.asRGBA8()
         # Test the pixels at row 9 columns 0 and 1.
         row9 = list(pixels)[9]
         self.assertEqual(list(row9[0:8]),
@@ -254,17 +255,16 @@ class Test(unittest.TestCase):
                          [255, 181, 0, 255, 247, 181, 0, 255])
 
     def testLtoRGBA(self):
-        "asRGBA() on grey source."""
-        # Test for Issue 60
+        """asRGBA() on grey source."""
         pngsuite.basi0g08.seek(0)
         r = png.Reader(pngsuite.basi0g08)
         x,y,pixels,meta = r.asRGBA()
         row9 = list(list(pixels)[9])
         self.assertEqual(row9[0:8],
           [222, 222, 222, 255, 221, 221, 221, 255])
+
     def testCtrns(self):
-        "Test colour type 2 and tRNS chunk."
-        # Test for Issue 25
+        """Test colour type 2 and tRNS chunk."""
         pngsuite.tbrn2c08.seek(0)
         r = png.Reader(pngsuite.tbrn2c08)
         x,y,pixels,meta = r.asRGBA8()
@@ -274,10 +274,13 @@ class Test(unittest.TestCase):
         self.assertEqual(tuple(row0[0:4]), (0xff, 0xff, 0xff, 0x00))
 
     def testAdam7read(self):
-        """Adam7 interlace reading.
+        """
+        Adam7 interlace reading.
+
         Specifically, test that for images in the PngSuite that
         have both an interlaced and straightlaced pair that both
-        images from the pair produce the same array of pixels."""
+        images from the pair produce the same array of pixels.
+        """
         for candidate in pngsuite.png:
             if not candidate.startswith('basn'):
                 continue
@@ -298,14 +301,16 @@ class Test(unittest.TestCase):
                              [list(it) for it in adam7])
 
     def testAdam7write(self):
-        """Adam7 interlace writing.
+        """
+        Adam7 interlace writing.
+
         For each test image in the PngSuite, write an interlaced
         and a straightlaced version.  Decode both, and compare results.
         """
         # Not such a great test, because the only way we can check what
         # we have written is to read it back again.
-        # Check different modes: default by number; default by name;
-        #                        adaptive by name; adaptive by dict
+        # Check different filter modes: default by number; default by name;
+        #                              adaptive by name; adaptive by dict
         for filtertype in (0, 1, 2, 'average', 'paeth',
                            'sum', {'name': 'entropy'}):
             for name, file_ in pngsuite.png.items():
@@ -315,7 +320,7 @@ class Test(unittest.TestCase):
                     continue
                 file_.seek(0)
                 it = png.Reader(file_)
-                x, y, pixels, meta = it.read()
+                x, y, pixels, _ = it.read()
                 # straightlaced is easier to filter, so we test interlaced
                 # using straight as reference
                 pngi = topngbytes('adam7wn' + name + '.png', pixels,
@@ -324,59 +329,58 @@ class Test(unittest.TestCase):
                                   transparent=it.transparent,
                                   interlace=False, filter_type=0)
 
-                x, y, ps, meta = png.Reader(bytes=pngi).read()
+                x, y, ps, _ = png.Reader(bytes=pngi).read()
                 file_.seek(0)
                 it = png.Reader(file_)
-                x, y, pixels, meta = it.read()
+                x, y, pixels, _ = it.read()
                 pngs = topngbytes('adam7wi' + name + '.png', pixels,
                                   x=x, y=y, bitdepth=it.bitdepth,
                                   greyscale=it.greyscale, alpha=it.alpha,
                                   transparent=it.transparent,
                                   interlace=True, filter_type=filtertype)
-                x, y, pi, meta = png.Reader(bytes=pngs).read()
+                x, y, pi, _ = png.Reader(bytes=pngs).read()
                 self.assertEqual([list(it) for it in ps], [list(it) for it in pi])
 
     def testPGMin(self):
         """Test that the command line tool can read PGM files."""
-        def do():
-            return png._main(['testPGMin'])
         s = BytesIO()
         s.write(strtobytes('P5 2 2 3\n'))
         s.write(strtobytes('\x00\x01\x02\x03'))
         s.flush()
         s.seek(0)
         o = BytesIO()
-        _redirect_io(s, o, do)
+        _redirect_io(s, o, lambda: png._main(['testPGMin']))
         r = png.Reader(bytes=o.getvalue())
         x,y,pixels,meta = r.read()
         self.assertEqual(r.greyscale, True)
         self.assertEqual(r.bitdepth, 2)
+
     def testPAMin(self):
         """Test that the command line tool can read PAM file."""
-        def do():
-            return png._main(['testPAMin'])
         s = BytesIO()
         s.write(strtobytes('P7\nWIDTH 3\nHEIGHT 1\nDEPTH 4\nMAXVAL 255\n'
                 'TUPLTYPE RGB_ALPHA\nENDHDR\n'))
         # The pixels in flat row flat pixel format
-        flat =  [255,0,0,255, 0,255,0,120, 0,0,255,30]
+        flat = [255,0,0,255, 0,255,0,120, 0,0,255,30]
         asbytes = seqtobytes(flat)
         s.write(asbytes)
         s.flush()
         s.seek(0)
         o = BytesIO()
-        _redirect_io(s, o, do)
+        _redirect_io(s, o, lambda: png._main(['testPAMin']))
         r = png.Reader(bytes=o.getvalue())
         x,y,pixels,meta = r.read()
         self.assertEqual(r.alpha, True)
         self.assertEqual(not r.greyscale,True)
         self.assertEqual(list(itertools.chain(*pixels)), flat)
+
     def testLA4(self):
         """Create an LA image with bitdepth 4."""
         bytes = topngbytes('la4.png', [[5, 12]], 1, 1,
           greyscale=True, alpha=True, bitdepth=4)
         sbit = png.Reader(bytes=bytes).chunk('sBIT')[1]
         self.assertEqual(sbit, strtobytes('\x04\x04'))
+
     def testPal(self):
         """Test that a palette PNG returns the palette in info."""
         pngsuite.basn3p04.seek(0)
@@ -391,14 +395,14 @@ class Test(unittest.TestCase):
         to another."""
         pngsuite.basn3p04.seek(0)
         r = png.Reader(pngsuite.basn3p04)
-        x,y,pixels,info = r.read()
+        _, _, pixels, info = r.read()
         w = png.Writer(**info)
         o = BytesIO()
         w.write(o, pixels)
         o.flush()
         o.seek(0)
         r = png.Reader(file=o)
-        _,_,_,again_info = r.read()
+        _, _, _, again_info = r.read()
         # Same palette
         self.assertEqual(again_info['palette'], info['palette'])
 
@@ -435,12 +439,15 @@ class Test(unittest.TestCase):
         r = png.Reader(bytes=o.getvalue())
         sbit = r.chunk('sBIT')[1]
         self.assertEqual(sbit, strtobytes('\x01\x01\x01'))
+
     def testLtrns0(self):
         """Create greyscale image with tRNS chunk."""
         return self.helperLtrns(0)
+
     def testLtrns1(self):
         """Using 1-tuple for transparent arg."""
         return self.helperLtrns((0,))
+
     def helperLtrns(self, transparent):
         """Helper used by :meth:`testLtrns*`."""
         pixels = zip([0x00, 0x38, 0x4c, 0x54, 0x5c, 0x40, 0x38, 0x00])
@@ -454,7 +461,8 @@ class Test(unittest.TestCase):
         self.assertEqual(meta['bitdepth'], 1)
 
     def testPhyAspect(self):
-        """Test that physical is read and could be correctly applied
+        """
+        Test that physical is read and could be correctly applied
 
         The first (cdf) image is an example of flat (horizontal) pixels,
         where the pHYS chunk (x is 1 per unit, y = 4 per unit) must take
@@ -504,7 +512,8 @@ class Test(unittest.TestCase):
         self.assertEqual(float(y) / info_r['physical'][0][1], 0.032)
 
     def testWinfo(self):
-        """Test the dictionary returned by a `read` method can be used
+        """
+        Test the dictionary returned by a `read` method can be used
         as args for :meth:`Writer`.
         """
         pngsuite.png['basn2c16'].seek(0)
@@ -513,8 +522,7 @@ class Test(unittest.TestCase):
         w = png.Writer(**info)
 
     def testText(self):
-        """Test text information saving and retrieving
-        """
+        """Test text information saving and retrieving"""
         # Use image as core for text
         pngsuite.png['basn2c16'].seek(0)
         r = png.Reader(file=pngsuite.png['basn2c16'])
@@ -554,10 +562,7 @@ class Test(unittest.TestCase):
         self.assertEqual(text, info_r.get('text'))
 
     def testPackedIter(self):
-        """Test iterator for row when using write_packed.
-
-        Indicative for Issue 47.
-        """
+        """Test iterator for row when using write_packed."""
         w = png.Writer(16, 2, greyscale=True, alpha=False, bitdepth=1)
         o = BytesIO()
         w.write_packed(o, [itertools.chain([0x0a], [0xaa]),
@@ -569,15 +574,19 @@ class Test(unittest.TestCase):
         self.assertEqual(len(pixels[0]), 16)
 
     def testInterlacedBuffer(self):
-        """Test that reading an interlaced PNG yields each row as
-        buffer-compatible type."""
+        """
+        Test that reading an interlaced PNG yields each row as
+        buffer-compatible type.
+        """
         pngsuite.basi0g08.seek(0)
         r = png.Reader(pngsuite.basi0g08)
         buffer(list(r.read()[2])[0])
 
     def testTrnsBuffer(self):
-        """Test that reading a type 2 PNG with tRNS chunk yields each
-        row as buffer-compatible type (using asDirect)."""
+        """
+        Test that reading a type 2 PNG with tRNS chunk yields each
+        row as buffer-compatible type (using asDirect).
+        """
         pngsuite.tbrn2c08.seek(0)
         r = png.Reader(pngsuite.tbrn2c08)
         buffer(list(r.asDirect()[2])[0])
@@ -588,18 +597,17 @@ class Test(unittest.TestCase):
     # exceptions raised.
     def testEmpty(self):
         """Test empty file."""
-
         r = png.Reader(bytes='')
         self.assertRaises(png.FormatError, r.asDirect)
+
     def testSigOnly(self):
         """Test file containing just signature bytes."""
-
         pngsuite.png['basi0g01'].seek(0)
         r = png.Reader(bytes=pngsuite.png['basi0g01'].read(8))
         self.assertRaises(png.FormatError, r.asDirect)
+
     def testExtraPixels(self):
         """Test file that contains too many pixels."""
-
         def eachchunk(chunk):
             if chunk[0] != 'IDAT':
                 return chunk
@@ -611,6 +619,7 @@ class Test(unittest.TestCase):
         self.assertRaises(png.FormatError, self.helperFormat, eachchunk)
 
     def testNotEnoughPixels(self):
+        """Test file without sufficient data"""
         def eachchunk(chunk):
             if chunk[0] != 'IDAT':
                 return chunk
@@ -622,17 +631,19 @@ class Test(unittest.TestCase):
         self.assertRaises(png.FormatError, self.helperFormat, eachchunk)
 
     def testBadChecksum(self):
-        # Incorrect header checksum
+        """Incorrect checksum"""
+        # header
         pngsuite.png['xhdn0g08'].seek(0)
         r = png.Reader(pngsuite.png['xhdn0g08'])
         self.assertRaises(png.ChunkError, r.asDirect)
-        # Incorrect IDAT checksum
+        # IDAT 
         pngsuite.png['xcsn0g01'].seek(0)
         r = png.Reader(pngsuite.png['xcsn0g01'])
         pixels = r.asDirect()[2]
         self.assertRaises(png.FormatError, list, pixels)
 
     def testBadSignature(self):
+        """Tests for bad signature"""
         # signature byte 1 MSBit reset to zero
         pngsuite.png['xs1n0g01'].seek(0)
         r = png.Reader(pngsuite.png['xs1n0g01'])
@@ -651,16 +662,18 @@ class Test(unittest.TestCase):
         self.assertRaises(png.FormatError, r.asDirect)
 
     def testBadColour(self):
-        # color type 1
+        """Tests for incorrect colour"""
+        # colour type 1
         pngsuite.png['xc1n0g08'].seek(0)
         r = png.Reader(pngsuite.png['xc1n0g08'])
         self.assertRaises(png.FormatError, r.asDirect)
-        # color type 9
+        # colour type 9
         pngsuite.png['xc9n2c08'].seek(0)
         r = png.Reader(pngsuite.png['xc9n2c08'])
         self.assertRaises(png.FormatError, r.asDirect)
 
     def testBadDepth(self):
+        """Test incorrect bitdepth"""
         # bit-depth 0
         pngsuite.png['xd0n2c08'].seek(0)
         r = png.Reader(pngsuite.png['xd0n2c08'])
@@ -675,15 +688,23 @@ class Test(unittest.TestCase):
         self.assertRaises(png.FormatError, r.asDirect)
 
     def helperFormat(self, f):
+        """
+        Helper for format tests
+
+        call `f` function to change chunks
+        """
         pngsuite.basn0g01.seek(0)
         r = png.Reader(pngsuite.basn0g01)
         o = BytesIO()
+
         def newchunks():
+            """chunks conversion"""
             for chunk in r.chunks():
                 yield f(chunk)
         png.write_chunks(o, newchunks())
         r = png.Reader(bytes=o.getvalue())
         return list(r.asDirect()[2])
+
     def testBadFilter(self):
         def eachchunk(chunk):
             if chunk[0] != 'IDAT':
@@ -697,7 +718,6 @@ class Test(unittest.TestCase):
 
     def testFlat(self):
         """Test read_flat."""
-
         try:
             from hashlib import md5 as md5_func
         except ImportError:
@@ -717,36 +737,47 @@ class Test(unittest.TestCase):
         self.assertEqual(d, '255cd971ab8cd9e7275ff906e5041aa0')
 
     def testfromarray(self):
+        """Test writing files from array"""
         img = png.from_array([[0, 0x33, 0x66], [0xff, 0xcc, 0x99]], 'L')
         img.save(BytesIO())
+
     def testfromarrayL16(self):
+        """Test writing 16-bit files from array"""
         img = png.from_array(group(range(2**16), 256), 'L;16')
         img.save(BytesIO())
+
     def testfromarrayRGB(self):
+        """Test 1-bit RGB files from array"""
         img = png.from_array([[0,0,0, 0,0,1, 0,1,0, 0,1,1],
                           [1,0,0, 1,0,1, 1,1,0, 1,1,1]], 'RGB;1')
         o = BytesIO()
         img.save(o)
+
     def testfromarrayIter(self):
+        """Test writing from iterator"""
         i = itertools.islice(itertools.count(10), 20)
         i = [[x, x, x] for x in i]
         img = png.from_array(i, 'RGB;5', dict(height=20))
         f = BytesIO()
         img.save(f)
+
     def testfromarrayWrong(self):
+        """Test incorrect mode handling"""
         try:
             png.from_array([[1]], 'gray')
         except png.Error:
             return
         assert 0, "Expected from_array() to raise png.Error exception"
+
     def testfromarrayShortMode(self):
+        """Test saving with shortened mode (no ';')"""
         png.from_array([[0,1],[2,3]], 'L2').save(BytesIO())
+        # TODO: read to check
 
     # numpy dependent tests.  These are skipped (with a message to
     # sys.stderr) if numpy cannot be imported.
     def testNumpyuint16(self):
         """numpy uint16."""
-
         try:
             import numpy
         except ImportError:
@@ -756,9 +787,9 @@ class Test(unittest.TestCase):
         rows = [[numpy.uint16(it) for it in range(0, 0x10000, 0x5555)]]
         b = topngbytes('numpyuint16.png', rows, 4, 1,
             greyscale=True, alpha=False, bitdepth=16)
+
     def testNumpyuint8(self):
         """numpy uint8."""
-
         try:
             import numpy
         except ImportError:
@@ -768,9 +799,9 @@ class Test(unittest.TestCase):
         rows = [[numpy.uint8(it) for it in range(0, 0x100, 0x55)]]
         b = topngbytes('numpyuint8.png', rows, 4, 1,
             greyscale=True, alpha=False, bitdepth=8)
+
     def testNumpybool(self):
         """numpy bool."""
-
         try:
             import numpy
         except ImportError:
@@ -780,6 +811,7 @@ class Test(unittest.TestCase):
         rows = [[numpy.bool(it) for it in (0, 1)]]
         b = topngbytes('numpybool.png', rows, 2, 1,
             greyscale=True, alpha=False, bitdepth=1)
+
     def testNumpyarray(self):
         """numpy array."""
         try:
@@ -793,6 +825,7 @@ class Test(unittest.TestCase):
         img.save(BytesIO())
 
     def paeth(self, x, a, b, c):
+        """Paeth reference code"""
         p = a + b - c
         pa = abs(p - a)
         pb = abs(p - b)
@@ -807,6 +840,7 @@ class Test(unittest.TestCase):
 
     # test filters and unfilters
     def testFilterScanlineFirstLine(self):
+        """Test filter without previous line"""
         line = array('B', [30, 31, 32, 230, 231, 232])
         filter_ = png.Filter(24, prev=None)
         res = filter_.filter_all(line)
@@ -820,13 +854,13 @@ class Test(unittest.TestCase):
         # average
         self.assertEqual(list(res[3]), [3, 30, 31, 32, 215, 216, 216])
         # paeth
-        self.assertEqual(list(res[4]), [
-            4, self.paeth(30, 0, 0, 0), self.paeth(31, 0, 0, 0),
+        self.assertEqual(list(res[4]),
+            [4, self.paeth(30, 0, 0, 0), self.paeth(31, 0, 0, 0),
             self.paeth(32, 0, 0, 0), self.paeth(230, 30, 0, 0),
-            self.paeth(231, 31, 0, 0), self.paeth(232, 32, 0, 0)
-            ])
+            self.paeth(231, 31, 0, 0), self.paeth(232, 32, 0, 0)])
 
     def testFilterScanline(self):
+        """Test filtering with previous line"""
         prev = array('B', [20, 21, 22, 210, 211, 212])
         line = array('B', [30, 32, 34, 230, 233, 236])
         filter_ = png.Filter(24, prev=prev)
@@ -840,17 +874,18 @@ class Test(unittest.TestCase):
         # average
         self.assertEqual(list(res[3]), [3, 20, 22, 23, 110, 112, 113])
         # paeth
-        self.assertEqual(list(res[4]), [
-            4, self.paeth(30, 0, 20, 0), self.paeth(32, 0, 21, 0),
+        self.assertEqual(list(res[4]),
+            [4, self.paeth(30, 0, 20, 0), self.paeth(32, 0, 21, 0),
             self.paeth(34, 0, 22, 0), self.paeth(230, 30, 210, 20),
-            self.paeth(233, 32, 211, 21), self.paeth(236, 34, 212, 22)
-            ])
+            self.paeth(233, 32, 211, 21), self.paeth(236, 34, 212, 22)])
 
     def testUnfilterScanline(self):
+        """Test unfiltering"""
         scanprev = array('B', [20, 21, 22, 210, 211, 212])
         scanline = array('B', [30, 32, 34, 230, 233, 236])
 
         def undo_filter(filter_type, line, prev):
+            """undoing filter"""
             filter_ = png.Filter(24, prev=prev)
             line = array('B', line)
             return filter_.undo_filter(filter_type, line)
@@ -876,8 +911,10 @@ class Test(unittest.TestCase):
         self.assertEqual(list(out), [8, 10, 9, 108, 111, 113])  # paeth
 
     def testModifyRows(self):
-        """Tests that the rows yielded by the pixels generator
-        can be safely modified."""
+        """
+        Tests that the rows yielded by the pixels generator
+        can be safely modified.
+        """
         k = 'f02n0g08'
         pngsuite.png[k].seek(0)
         r1 = png.Reader(bytes=pngsuite.png[k].read())
@@ -891,13 +928,13 @@ class Test(unittest.TestCase):
                 row1[i] = 11117 % (i + 1)
 
     def testPNMWrite(self):
+        """Test writing of 'pnm' file"""
         o = BytesIO()
-        w,h = 3,3
         pixels = [[0, 1, 2],
                   [3, 0, 1],
                   [2, 3, 0]]
         meta = dict(alpha=False, greyscale=True, bitdepth=2, planes=1)
-        png.write_pnm(o, w, h, pixels, meta)
+        png.write_pnm(o, 3, 3, pixels, meta)
 
 if __name__ == "__main__":
     unittest.main()

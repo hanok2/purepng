@@ -23,6 +23,7 @@
 # LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE
 # OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
 # PERFORMANCE OF THIS SOFTWARE.
+"""Plugin for using PurePNG with PIL"""
 from PIL import Image, ImageFile
 import array
 import png
@@ -55,7 +56,9 @@ except NameError:
     except NameError:
         buffer = buf_emu
 
+
 def group(s, n):
+    """Repack iterator items into groups"""
     # See http://www.python.org/doc/2.6/library/functions.html#zip
     return list(zip(*[iter(s)] * n))
 
@@ -116,11 +119,10 @@ class PngImageFile(ImageFile.ImageFile):
 
     def verify(self):
         "Verify PNG file"
-
         pass
 
     def load_read(self, n_bytes):
-        "internal: read more image data"
+        """internal: read more image data"""
         row = next(self.pixels)
         if isinstance(row, array.array):
             if row.typecode == 'H':
@@ -134,66 +136,71 @@ class PngImageFile(ImageFile.ImageFile):
 
 # --------------------------------------------------------------------
 # PNG writer
+def get_palette(im):
+    """Prepare palete for saving. Return (palette, bitdepth) tuple."""
+    palette_bytes = im.palette.getdata()[1]
+    # attempt to minimize storage requirements for palette images
+    if "bits" in im.encoderinfo:
+        # number of bits specified by user
+        colors = 1 << im.encoderinfo["bits"]
+    else:
+        # check palette contents
+        if im.palette:
+            # For now palette only RGB
+            colors = max(min(len(palette_bytes) // 3, 256), 2)
+        else:
+            colors = 256
+
+    if colors <= 2:
+        bits = 1
+    elif colors <= 4:
+        bits = 2
+    elif colors <= 16:
+        bits = 4
+    else:
+        bits = 8
+
+    # For now palette only RGB
+    palette_byte_number = (2 ** bits) * 3
+    # Match to declared palette size
+    palette_bytes = bytearray(palette_bytes[:palette_byte_number])
+    if len(palette_bytes) < palette_byte_number:
+        palette_bytes.extend((0,) * (palette_byte_number - len(palette_bytes)))
+    return (group(palette_bytes, 3), bits)
+
+
 def _save(im, fp, filename):
-    # save an image to disk (called by the save method)
-    encoderinfo = im.encoderinfo
+    """save an image to disk (called by the save method)"""
+
     def rows(im):
+        """Rows generator from image"""
         for i in range(im.size[1]):
             row = []
             for j in range(im.size[0]):
                 px = im.getpixel((j, i))
                 if hasattr(px, '__iter__'):
-                    #Multi-channel image
+                    # Multi-channel image
                     row.extend(px)
                 else:
-                    #Single channel image
+                    # Single channel image
                     row.append(px)
             yield row
     # Default values
     meta = dict(im.info)
-    if im.mode != 'P':
+    if im.mode == 'P':
+        meta['palette'], bits = get_palette(im)
+    else:
         parsed_mode = png.parse_mode(im.mode, 8)
         (meta['greyscale'], meta['alpha'], bits) = parsed_mode
         if bits == 1:
             fullrows = rows
 
             def rows(im):
+                """Wrapper rows to strictly bool value"""
                 for row in fullrows(im):
                     yield [bool(it) for it in row]
 
-    if im.mode == "P":
-        palette_bytes = im.palette.getdata()[1]
-        # attempt to minimize storage requirements for palette images
-        if "bits" in encoderinfo:
-            # number of bits specified by user
-            colors = 1 << encoderinfo["bits"]
-        else:
-            # check palette contents
-            if im.palette:
-                # For now palette only RGB
-                colors = max(min(len(palette_bytes) // 3, 256), 2)
-            else:
-                colors = 256
-
-        if colors <= 2:
-            bits = 1
-        elif colors <= 4:
-            bits = 2
-        elif colors <= 16:
-            bits = 4
-        else:
-            bits = 8
-
-        # For now palette only RGB
-        palette_byte_number = (2 ** bits) * 3
-        # Match to declared palette size
-        palette_bytes = bytearray(palette_bytes[:palette_byte_number])
-        if len(palette_bytes) < palette_byte_number:
-            palette_bytes.extend((0,) * \
-                                 (palette_byte_number - len(palette_bytes)))
-        meta['palette'] = group(palette_bytes, 3)
-
-    transparency = encoderinfo.get('transparency',
+    transparency = im.encoderinfo.get('transparency',
                         im.info.get('transparency',
                             None))
     if (transparency or transparency == 0):
@@ -223,7 +230,7 @@ def _save(im, fp, filename):
                 transparency = None
             pass  # triade will pass to writer
         else:
-            if "transparency" in encoderinfo:
+            if "transparency" in im.encoderinfo:
                 # don't bother with transparency if it's an RGBA
                 # and it's in the info dict. It's probably just stale.
                 raise IOError("cannot use transparency for this mode")
@@ -237,7 +244,7 @@ def _save(im, fp, filename):
     writer = png.Writer(size=im.size,
                         bitdepth=bits,
                         transparent=transparency,
-                        compression=encoderinfo.get("compress_level", -1),
+                        compression=im.encoderinfo.get("compress_level", -1),
                         **meta)
 
     writer.write(fp, rows(im))
