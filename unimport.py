@@ -4,6 +4,7 @@ from os.path import join
 
 
 def do_unimport(folder=''):
+    """Do extraction of filters etc. into target folder"""
     src = open(join(folder, 'png.py'))
     try:
         remove(join(folder, 'pngfilters.py'))
