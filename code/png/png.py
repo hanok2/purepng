@@ -398,6 +398,58 @@ def check_color(c, greyscale, which):
                 "%s colour must be a triple of integers" % which)
     return c
 
+
+def check_text(text, w_kwargs):
+    '''Reorganize text, pop text parameteres from kwargs dictionary
+    '''
+    if not text:
+        text = {}
+    # Support for registered keywords as kwargs
+    if 'Title' in w_kwargs:
+        text['Title'] = w_kwargs.pop('Title')
+    if 'Author' in w_kwargs:
+        text['Author'] = w_kwargs.pop('Author')
+    if 'Description' in w_kwargs:
+        text['Description'] = w_kwargs.pop('Description')
+    if 'Copyright' in w_kwargs:
+        text['Copyright'] = w_kwargs.pop('Copyright')
+    if 'Software' in w_kwargs:
+        text['Software'] = w_kwargs.pop('Software')
+    if 'Disclaimer' in w_kwargs:
+        text['Disclaimer'] = w_kwargs.pop('Disclaimer')
+    if 'Warning' in w_kwargs:
+        text['Warning'] = w_kwargs.pop('Warning')
+    if 'Source' in w_kwargs:
+        text['Source'] = w_kwargs.pop('Source')
+    if 'Comment' in w_kwargs:
+        text['Comment'] = w_kwargs.pop('Comment')
+    return text
+
+
+def check_phy(physical):
+    if physical is None:
+        return
+    # All in row
+    if len(physical) == 3:
+        return ((physical[0], physical[1]), physical[2])
+    # Ensure length and convert all false to 0 (no unit)
+    if len(physical) == 1 or not physical[1]:
+        physical = (physical[0], 0)
+    # Single dimension
+    if isinstance(physical[0], float) or isinteger(physical[0]):
+        physical = ((physical[0], physical[0]), physical[1])
+    # Unit conversion
+    if physical[1] in (1, 'm', 'meter'):
+        physical = (physical[0], 1)
+    elif physical[1] in ('i', 'in', 'inch'):
+        physical = ((int(physical[0][0] / 0.0254 + 0.5),
+                int(physical[0][1] / 0.0254 + 0.5)), 1)
+    elif physical[1] in ('cm', 'centimeter'):
+        physical = ((physical[0][0] * 100,
+                     physical[0][1] * 100), 1)
+    return physical
+
+
 class Error(Exception):
     def __str__(self):
         return self.__class__.__name__ + ': ' + ' '.join(self.args)
@@ -825,7 +877,7 @@ class Writer:
             raise ValueError(
                 "transparent colour not allowed with alpha channel")
 
-        if 'bytes_per_sample' in kwargs:
+        if 'bytes_per_sample' in kwargs and not bitdepth:
             warnings.warn('please use bitdepth instead of bytes_per_sample',
                           DeprecationWarning)
             bytes_per_sample = kwargs.pop('bytes_per_sample')
@@ -894,50 +946,7 @@ class Writer:
 
         transparent = check_color(transparent, greyscale, 'transparent')
         background = check_color(background, greyscale, 'background')
-        if physical is not None:
-            # All in row
-            if len(physical) == 3:
-                physical = ((physical[0], physical[1]), physical[2])
-            # Ensure length and convert all false to 0 (no unit)
-            if len(physical) == 1 or not physical[1]:
-                physical = (physical[0], 0)
-            # Single dimension
-            if isinstance(physical[0], float) or isinteger(physical[0]):
-                physical = ((physical[0], physical[0]), physical[1])
-            # Unit conversion
-            if physical[1] in (1, 'm', 'meter'):
-                physical = (physical[0], 1)
-            elif physical[1] in ('i', 'in', 'inch'):
-                physical = ((int(physical[0][0] / 0.0254 + 0.5),
-                        int(physical[0][1] / 0.0254 + 0.5)), 1)
-            elif physical[1] in ('cm', 'centimeter'):
-                physical = ((physical[0][0] * 100,
-                             physical[0][1] * 100), 1)
-
-        if not text:
-            self.text = {}
-        else:
-            self.text = text
-        # Support for registered keywords as kwargs
-        if 'Title' in kwargs:
-            self.text['Title'] = kwargs.pop('Title')
-        if 'Author' in kwargs:
-            self.text['Author'] = kwargs.pop('Author')
-        if 'Description' in kwargs:
-            self.text['Description'] = kwargs.pop('Description')
-        if 'Copyright' in kwargs:
-            self.text['Copyright'] = kwargs.pop('Copyright')
-        if 'Software' in kwargs:
-            self.text['Software'] = kwargs.pop('Software')
-        if 'Disclaimer' in kwargs:
-            self.text['Disclaimer'] = kwargs.pop('Disclaimer')
-        if 'Warning' in kwargs:
-            self.text['Warning'] = kwargs.pop('Warning')
-        if 'Source' in kwargs:
-            self.text['Source'] = kwargs.pop('Source')
-        if 'Comment' in kwargs:
-            self.text['Comment'] = kwargs.pop('Comment')
-
+        self.text = check_text(text, kwargs)
         # At the moment the `planes` argument is ignored;
         # its purpose is to act as a dummy so that
         # ``Writer(x, y, **info)`` works, where `info` is a dictionary
@@ -964,20 +973,20 @@ class Writer:
                 raise Error("ICC profile shoud have a name")
             else:
                 self.icc_profile_name = strtobytes(icc_profile_name)
-        self.physical = physical
+        self.physical = check_phy(physical)
         self.greyscale = bool(greyscale)
         self.alpha = bool(alpha)
-        self.colormap = bool(palette)
         self.bitdepth = int(bitdepth)
         self.compression = compression
         self.chunk_limit = chunk_limit
         self.interlace = bool(interlace)
         self.palette = check_palette(palette)
 
-        self.color_type = 4*self.alpha + 2*(not greyscale) + 1*self.colormap
+        colormap = bool(palette)
+        self.color_type = 4 * self.alpha + 2 * (not greyscale) + 1 * colormap
         assert self.color_type in (0,2,3,4,6)
 
-        self.color_planes = (3,1)[self.greyscale or self.colormap]
+        self.color_planes = (3, 1)[self.greyscale or colormap]
         self.planes = self.color_planes + self.alpha
 
     def make_palette(self):
