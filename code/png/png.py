@@ -235,6 +235,7 @@ def bytearray_to_bytes(src):
 
 
 def newHarray(length=0):
+    """fast init by length"""
     return array('H', [0]) * length
 
 
@@ -252,7 +253,7 @@ except NameError:
         return array('B', src)
 
     def newBarray(length=0):
-        """faster init"""
+        """fast init by length"""
         return array('B', [0]) * length
 
     if hasattr(array, '__copy__'):
@@ -262,8 +263,10 @@ except NameError:
         copyBarray = bytearray
 
     def bytearray_to_bytes(row):
-        """Convert bytearray to bytes.  Recal that `row` will
-        actually be an ``array``.
+        """
+        Convert bytearray to bytes.
+
+        Recal that `row` will actually be an ``array``.
         """
         return row.tostring()
 
@@ -307,7 +310,6 @@ def interleave_planes(ipixels, apixels, ipsize, apsize):
     array is the same type as the input arrays which should be the
     same type as each other.
     """
-
     itotal = len(ipixels)
     atotal = len(apixels)
     newtotal = itotal + atotal
@@ -332,7 +334,6 @@ def check_palette(palette):
 
     Returns the palette as a list if okay; raises an exception otherwise.
     """
-
     # None is the default and is allowed.
     if palette is None:
         return None
@@ -363,7 +364,6 @@ def check_sizes(size, width, height):
 
     Return a (width, height) pair.
     """
-
     if not size:
         return width, height
 
@@ -389,7 +389,6 @@ def check_color(c, greyscale, which):
     (which, if it's a bar integer, is "corrected" to a 1-tuple).
     For transparent or background options.
     """
-
     if c is None:
         return c
     if greyscale:
@@ -440,6 +439,11 @@ def check_text(text, w_kwargs):
 
 
 def check_phy(physical):
+    """
+    Handle most way of write physical dimensions.
+
+    Convetr them to ((unit_by_x, unit_by_y), is_meter)
+    """
     if physical is None:
         return
     # All in row
@@ -464,12 +468,15 @@ def check_phy(physical):
 
 
 class Error(Exception):
+
     """Generic PurePNG error"""
+
     def __str__(self):
         return self.__class__.__name__ + ': ' + ' '.join(self.args)
 
 
 class FormatError(Error):
+
     """
     Problem with input file format.
 
@@ -479,11 +486,12 @@ class FormatError(Error):
 
 
 class ChunkError(FormatError):
+
     """Error in chunk handling"""
-    pass
 
 
 class BaseFilter:
+
     """
     Basic methods of filtering and other byte manipulations
 
@@ -647,11 +655,13 @@ class BaseFilter:
         return line
 
     def _filter_scanline(self, filter_type, line, result):
-        """Apply a scanline filter to a scanline.
+        """
+        Apply a scanline filter to a scanline.
 
         `filter_type` specifies the filter type (0 to 4)
         'line` specifies the current (unfiltered) scanline as a sequence
-        of bytes; """
+        of bytes;
+        """
         assert 0 <= filter_type < 5
         if self.prev is None:
             # We're on the first line.  Some of the filters can be reduced
@@ -678,6 +688,7 @@ class BaseFilter:
     # Todo: color conversion functions should be moved
     # to a separate part in future
     def convert_la_to_rgba(self, row, result):
+        """Convert a grayscale image with alpha to RGBA."""
         for i in range(len(row) // 3):
             for j in range(3):
                 result[(4 * i) + j] = row[2 * i]
@@ -719,6 +730,7 @@ except:
 
 
 class Writer:
+
     """PNG encoder in pure Python."""
 
     def __init__(self, width=None, height=None,
@@ -1041,7 +1053,6 @@ class Writer:
           Interlacing will require the entire image to be in working
           memory.
         """
-
         if self.interlace:
             fmt = 'BH'[self.bitdepth > 8]
             a = array(fmt, itertools.chain(*rows))
@@ -1054,7 +1065,8 @@ class Writer:
                   (nrows, self.height))
 
     def write_passes(self, outfile, rows, packed=False):
-        """Write a PNG image to the output file.
+        """
+        Write a PNG image to the output file.
 
         Most users are expected to find the :meth:`write` or
         :meth:`write_array` method more convenient.
@@ -1070,17 +1082,16 @@ class Writer:
         format; when `packed` is ``True`` each row should be a packed
         sequence of bytes.
         """
-
         self.write_idat(outfile, self.idat(rows, packed))
         return self.irows
 
     def write_idat(self, outfile, idat_sequence):
-        """Write png with IDAT to file
+        """
+        Write png with IDAT to file
 
         `idat_sequence` should be iterable that produce IDAT chunks
         compatible with `Writer` configuration.
         """
-
         # http://www.w3.org/TR/PNG/#5PNG-file-signature
         outfile.write(png_signature)
 
@@ -1184,6 +1195,7 @@ class Writer:
         data = bytearray()
 
         def byteextend(rowbytes):
+            """Default extending data with bytes. Applying filter"""
             data.extend(filt.do_filter(self.filter_type, rowbytes))
 
         # Choose an extend function based on the bitdepth.  The extend
@@ -1192,8 +1204,8 @@ class Writer:
         if self.bitdepth == 8 or packed:
             extend = byteextend
         elif self.bitdepth == 16:
-            # Decompose into bytes
             def extend(sl):
+                """Decompose into bytes before byteextend"""
                 fmt = '!%dH' % len(sl)
                 byteextend(bytearray(struct.pack(fmt, *sl)))
         else:
@@ -1201,7 +1213,9 @@ class Writer:
             assert self.bitdepth < 8
             # samples per byte
             spb = 8 // self.bitdepth
+
             def extend(sl):
+                """Pack into bytes befor byteextend"""
                 a = bytearray(sl)
                 # Adding padding bytes so we can group into a whole
                 # number of spb-tuples.
@@ -1217,7 +1231,9 @@ class Writer:
             oldextend = extend
             factor = \
               float(2**self.rescale[1]-1) / float(2**self.rescale[0]-1)
+
             def extend(sl):
+                """Rescale fofore extend"""
                 oldextend([int(round(factor * x)) for x in sl])
 
         # Build the first row, testing mostly to see if we need to
@@ -1293,7 +1309,6 @@ class Writer:
         is not one naturally supported by PNG; the bit depth should be
         1, 2, 4, 8, or 16.
         """
-
         if self.rescale:
             raise Error("write_packed method not suitable for bit depth %d" %
               self.rescale[0])
@@ -1305,7 +1320,6 @@ class Writer:
         with the parameters set in the writer object.  Works for
         (binary) PGM, PPM, and PAM formats.
         """
-
         if self.interlace:
             pixels = array('B')
             pixels.fromfile(infile,
@@ -1338,8 +1352,9 @@ class Writer:
 
     def file_scanlines(self, infile):
         """
-        Generates boxed rows in flat pixel format, from the input file
-        `infile`.  It assumes that the input file is in a "Netpbm-like"
+        Generates boxed rows in flat pixel format, from the input file.
+
+        It assumes that the input file is in a "Netpbm-like"
         binary format, and is positioned at the beginning of the first
         pixel.  The number of pixels to read is taken from the image
         dimensions (`width`, `height`, `planes`) and the number of bytes
@@ -1367,7 +1382,6 @@ class Writer:
         Generates boxed rows (flat pixels) from flat rows (flat pixels)
         in an array.
         """
-
         # Values per row
         vpr = self.width * self.planes
         stop = 0
@@ -1384,7 +1398,6 @@ class Writer:
         The generator yields each scanline of the reduced passes in turn, in
         boxed row flat pixel format.
         """
-
         # http://www.w3.org/TR/PNG/#8InterlaceMethods
         # Array type.
         fmt = 'BH'[self.bitdepth > 8]
@@ -1453,7 +1466,6 @@ class Filter(BaseFilter):
         return filtered lines as list
         For using with adaptive filters
         """
-
         lines = [None] * 5
         for filter_type in range(5):  # range save more than 'optimised' order
             res = copyBarray(line)
@@ -1479,7 +1491,6 @@ class Filter(BaseFilter):
         `line` specifies the current (unfiltered) scanline as a sequence
         of bytes;
         """
-
         if isinstance(strategy, basestring):
             strategy = {'name': str(strategy)}
         if isinstance(strategy, dict):
@@ -1539,6 +1550,7 @@ def register_extra_filter(selector, name):
 
 # Two basic adaptive strategies
 def adapt_sum(line, cfg, filter_obj):
+    """Determine best filter by sum of all row values"""
     lines = filter_obj.filter_all(line)
     res_s = [sum(it) for it in lines]
     r = res_s.index(min(res_s))
@@ -1547,6 +1559,7 @@ register_extra_filter(adapt_sum, 'sum')
 
 
 def adapt_entropy(line, cfg, filter_obj):
+    """Determine best filter by dispersion of row values"""
     lines = filter_obj.filter_all(line)
     res_c = [len(set(it)) for it in lines]
     r = res_c.index(min(res_c))
@@ -1678,7 +1691,6 @@ def from_array(a, mode=None, info=None):
     this must be true when mode is ``'L'`` or ``'LA'`` and false when
     mode is ``'RGB'`` or ``'RGBA'``.
     """
-
     # typechecks *info* to some extent.
     if info is None:
         info = {}
@@ -1777,6 +1789,7 @@ fromarray = from_array
 
 
 class Image:
+
     """
     A PNG image.
 
@@ -1786,15 +1799,15 @@ class Image:
     """
 
     def __init__(self, rows, info):
-        """
-          The constructor is not public.  Please do not call it.
-        """
-
+        """The constructor is not public.  Please do not call it."""
         self.rows = rows
         self.info = info
 
     def save(self, file):
-        """Save the image to *file*.  If *file* looks like an open file
+        """
+        Save the image to *file*.
+
+        If *file* looks like an open file
         descriptor then it is used, otherwise it is treated as a
         filename and a fresh file is opened.
 
@@ -1803,7 +1816,6 @@ class Image:
         source data will have been streamed, and cannot be streamed
         again.
         """
-
         w = Writer(**self.info)
 
         try:
@@ -1835,6 +1847,7 @@ class _readable:
 
 
 class Reader:
+
     """PNG decoder in pure Python."""
 
     def __init__(self, _guess=None, **kw):
@@ -1900,9 +1913,7 @@ class Reader:
         If the optional `lenient` argument evaluates to True,
         checksum failures will raise warnings rather than exceptions.
         """
-
         self.validate_signature()
-
         while True:
             # http://www.w3.org/TR/PNG/#5Chunk-layout
             if not self.atchunk:
@@ -1943,7 +1954,6 @@ class Reader:
         """Return an iterator that will yield each chunk as a
         (*chunktype*, *content*) pair.
         """
-
         while True:
             t,v = self.chunk()
             yield t,v
@@ -1956,7 +1966,6 @@ class Reader:
 
         Return in flat row flat pixel format.
         """
-
         # Values per row (of the target image)
         vpr = self.width * self.planes
 
@@ -2010,14 +2019,12 @@ class Reader:
         `rows` should be an iterator that yields the bytes of
         each row in turn.
         """
-
         def asvalues(raw):
             """
             Convert a row of raw bytes into a flat row.
 
             Result may or may not share with argument
             """
-
             if self.bitdepth == 8:
                 return raw
             if self.bitdepth == 16:
@@ -2041,7 +2048,6 @@ class Reader:
         """Convert serial format (byte stream) pixel data to flat row
         flat pixel.
         """
-
         if self.bitdepth == 8:
             return raw
         if self.bitdepth == 16:
@@ -2102,7 +2108,6 @@ class Reader:
 
     def validate_signature(self):
         """If signature (header) has not been read then read and validate it"""
-
         if self.signature:
             return
         self.signature = self.file.read(8)
@@ -2112,7 +2117,7 @@ class Reader:
     def preamble(self, lenient=False):
         """
         Extract the image metadata
-        
+
         Extract the image metadata by reading the initial part of
         the PNG file up to the start of the ``IDAT`` chunk.  All the
         chunks that precede the ``IDAT`` chunk are read and either
@@ -2121,9 +2126,7 @@ class Reader:
         If the optional `lenient` argument evaluates to True, checksum
         failures will raise warnings rather than exceptions.
         """
-
         self.validate_signature()
-
         while True:
             if not self.atchunk:
                 self.atchunk = self.chunklentype()
@@ -2140,7 +2143,6 @@ class Reader:
         where *chunk_type* is a string.  If there are no more chunks, ``None``
         is returned.
         """
-
         x = self.file.read(8)
         if not x:
             return None
@@ -2161,7 +2163,6 @@ class Reader:
         If the optional `lenient` argument evaluates to True,
         checksum failures will raise warnings rather than exceptions.
         """
-
         chunk_type, data = self.chunk(lenient=lenient)
         method = '_process_' + chunk_type
         m = getattr(self, method, None)
@@ -2379,7 +2380,6 @@ class Reader:
         If the optional `lenient` argument evaluates to True,
         checksum failures will raise warnings rather than exceptions.
         """
-
         self.preamble(lenient=lenient)
         raw = self.idatdecomp(lenient)
 
@@ -2437,7 +2437,6 @@ class Reader:
         If the `alpha` argument is ``'force'`` then an alpha channel is
         always added, forcing the result to be a sequence of 4-tuples.
         """
-
         if not self.plte:
             raise FormatError(
                 "Required PLTE chunk is missing in colour type 3 image.")
@@ -2485,9 +2484,7 @@ class Reader:
 
         All the other aspects of the image data are not changed.
         """
-
         self.preamble()
-
         # Simple case, no conversion necessary.
         if not self.colormap and not self.trns and not self.sbit:
             return self.read()
@@ -2563,7 +2560,6 @@ class Reader:
         all pixel values to be floating point values between 0.0 and
         *maxval*.
         """
-
         x,y,pixels,info = self.asDirect()
         sourcemaxval = 2**info['bitdepth']-1
         del info['bitdepth']
@@ -2576,7 +2572,6 @@ class Reader:
 
     def _as_rescale(self, get, targetbitdepth):
         """Helper used by :meth:`asRGB8` and :meth:`asRGBA8`."""
-
         width,height,pixels,meta = get()
         maxval = 2**meta['bitdepth'] - 1
         targetmaxval = 2**targetbitdepth - 1
@@ -2606,7 +2601,7 @@ class Reader:
     def asRGB8(self):
         """
         Return the image data as an RGB pixels with 8-bits per sample.
-        
+
         This is like the :meth:`asRGB` method except that
         this method additionally rescales the values so that they
         are all between 0 and 255 (8-bit).  In the case where the
@@ -2623,7 +2618,6 @@ class Reader:
 
         *pixels* is the pixel data in boxed row flat pixel format.
         """
-
         return self._as_rescale(self.asRGB, 8)
 
     def asRGBA8(self):
@@ -2640,7 +2634,7 @@ class Reader:
     def asRGB(self):
         """
         Return image as RGB pixels.
-        
+
         RGB colour images are passed
         through unchanged; greyscales are expanded into RGB
         triplets (there is a small speed overhead for doing this).
@@ -2686,10 +2680,10 @@ class Reader:
         maxval = 2**meta['bitdepth'] - 1
         if meta['bitdepth'] > 8:
             def newarray():
-                return array('H', [maxval]) * 4 * width
+                return array('H', [maxval] * 4 * width)
         else:
             def newarray():
-                return bytearray([maxval]) * 4 * width
+                return bytearray([maxval] * 4 * width)
 
         # Not best way, but we have only array of bytes accelerated now
         if meta['bitdepth'] <= 8:
@@ -2824,7 +2818,7 @@ if tee is None:  # There is no tee before Python 2.4
 def read_pam_header(infile):
     """
     Read (the rest of a) PAM header.
-    
+
     `infile` should be positioned
     immediately after the initial 'P7' line (at the beginning of the
     second line).  Returns are as for `read_pnm_header`.

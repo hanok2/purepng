@@ -1,8 +1,4 @@
-'''
-Created on 08.10.2013
-
-@author: scond_000
-'''
+"""Extracting part of `png.py` to compile it with Cython"""
 from os import remove
 from os.path import join
 

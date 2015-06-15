@@ -1,11 +1,15 @@
-'''
-Created on 27 may 2014
+"""Test PurePNG against PIL native plugin"""
+import unittest
+import pngsuite
+from PIL import Image
+from io import BytesIO
 
-@author: Scondo
-'''
+from PIL import PngImagePlugin as pilpng
+from png import PngImagePlugin as purepng
 
 
 def safe_repr(obj, short=False):
+    """Truncated output of repr(obj)"""
     _MAX_LENGTH = 80
     try:
         result = repr(obj)
@@ -20,14 +24,6 @@ try:
 except NameError:
     from sets import Set as set
 
-import unittest
-import pngsuite
-from PIL import Image
-from io import BytesIO
-
-from PIL import PngImagePlugin as pilpng
-from png import PngImagePlugin as purepng
-
 try:
     reload
 except NameError:
@@ -38,7 +34,11 @@ try:
 except NameError:
     unicode = str
 
+
 class PilImageToPyPngAdapter:
+
+    """Allow reading PIL image as PurePNG rows"""
+
     def __init__(self, im):
         self.im = im
         self.nowrow = 0
@@ -71,23 +71,27 @@ class PilImageToPyPngAdapter:
 
 
 class BaseTest(unittest.TestCase):
+
+    """Common testcase prototype"""
+
     test_ = None
     delta = 0
 
     def assertAlmostEqual(self, first, second,
                           places=None, msg=None, delta=None):
-        """Updated version which can handle iterables
+        """
+        Updated version which can handle iterables
 
-           Fail if the two objects are unequal as determined by their
-           difference rounded to the given number of decimal places
-           (default 7) and comparing to zero, or by comparing that the
-           between the two objects is more than the given delta.
+        Fail if the two objects are unequal as determined by their
+        difference rounded to the given number of decimal places
+        (default 7) and comparing to zero, or by comparing that the
+        between the two objects is more than the given delta.
 
-           Note that decimal places (from zero) are usually not the same
-           as significant digits (measured from the most signficant digit).
+        Note that decimal places (from zero) are usually not the same
+        as significant digits (measured from the most signficant digit).
 
-           If the two objects compare equal then they will automatically
-           compare almost equal.
+        If the two objects compare equal then they will automatically
+        compare almost equal.
         """
         if first == second:
             # shortcut
@@ -98,6 +102,7 @@ class BaseTest(unittest.TestCase):
             places = 7
 
         def valuecompare(value1, value2):
+            """Compare values within delta"""
             if value1 == value2:
                 # shortcut
                 return
@@ -117,6 +122,7 @@ class BaseTest(unittest.TestCase):
             return standardMsg
 
         def compareIters(first, second):
+            """Compare iterators"""
             passed = []
             errmsg = None
             for v1, v2 in zip(first, second):
@@ -152,6 +158,7 @@ class BaseTest(unittest.TestCase):
             raise self.failureException(msg)
 
     def assertDictEqual(self, d1, d2, msg=None):
+        """Comparison of dictionaries with some hacks and better printing"""
         keys = set(d1.keys())
         self.assertEqual(keys, set(d2.keys()))
         for key_ in keys:
@@ -164,6 +171,7 @@ class BaseTest(unittest.TestCase):
                              'Unequal values for key ' + repr(key_))
 
     def compareImages(self, im1, im2):
+        """Compare two images: their size, pixels and metadata"""
         self.assertEqual(im1.size, im2.size)
         # Copy info before clean it as PIL may rely on this while reading
         info1 = dict(im1.info)
@@ -197,6 +205,9 @@ class BaseTest(unittest.TestCase):
 
 
 class ReadTest(BaseTest):
+
+    """Reading test (read via PIL, read via PurePNG and compare)"""
+
     def runTest(self):
         if self.test_ is None:
             return
@@ -213,6 +224,9 @@ class ReadTest(BaseTest):
 
 
 class WriteTest(BaseTest):
+
+    """Writing test (write via PurePNG, re-read and compare with source)"""
+
     def runTest(self):
         if self.test_ is None:
             return
@@ -236,6 +250,7 @@ testsuite = pngsuite.png
 
 
 def getdelta(testname):
+    """Max delta between PIL and PurePNG"""
     if testname.endswith('16'):
         return 1
     elif testname == 'Basn0g03':
