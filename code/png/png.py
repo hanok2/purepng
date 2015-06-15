@@ -3,7 +3,7 @@
 #
 # png.py - PNG encoder/decoder in pure Python
 #
-# Copyright (C) 2014 Pavel Zlatovratskii <scondo@mail.ru>
+# Copyright (C) 2015 Pavel Zlatovratskii <scondo@mail.ru>
 # Copyright (C) 2006 Johann C. Rocholl <johann@browsershots.org>
 # Portions Copyright (C) 2009 David Jones <drj@pobox.com>
 # And probably portions Copyright (C) 2006 Nicko van Someren <nicko@nicko.org>
@@ -200,8 +200,7 @@ def group(s, n):
 
 
 def _rel_import(module, tgt):
-    '''Using relative import in both Python 2 and Python 3
-    '''
+    """Using relative import in both Python 2 and Python 3"""
     try:
         exec("from ." + module + " import " + tgt, globals(), locals())
     except SyntaxError:
@@ -400,8 +399,7 @@ def check_color(c, greyscale, which):
 
 
 def check_text(text, w_kwargs):
-    '''Reorganize text, pop text parameteres from kwargs dictionary
-    '''
+    """Reorganize text, pop text parameteres from kwargs dictionary"""
     if not text:
         text = {}
     # Support for registered keywords as kwargs
@@ -464,12 +462,11 @@ class ChunkError(FormatError):
 
 
 class BaseFilter:
-    '''Basic methods of filtering and other byte manipulations
+    """Basic methods of filtering and other byte manipulations
 
     This part can be compile with Cython (see README.cython)
     Private methods are declared as 'cdef' (unavailable from python)
-    for this compilation, so don't just rename it.
-    '''
+    for this compilation, so don't just rename it."""
 
     def __init__(self, bitdepth=8):
         if bitdepth > 8:
@@ -479,7 +476,6 @@ class BaseFilter:
 
     def __undo_filter_sub(self, scanline):
         """Undo sub filter."""
-
         ai = 0
         # Loops starts at index fu.
         for i in range(self.fu, len(scanline)):
@@ -490,7 +486,6 @@ class BaseFilter:
 
     def __do_filter_sub(self, scanline, result):
         """Sub filter."""
-
         ai = 0
         for i in range(self.fu, len(result)):
             x = scanline[i]
@@ -508,7 +503,6 @@ class BaseFilter:
 
     def __do_filter_up(self, scanline, result):
         """Up filter."""
-
         previous = self.prev
         for i in range(len(result)):
             x = scanline[i]
@@ -517,7 +511,6 @@ class BaseFilter:
 
     def __undo_filter_average(self, scanline):
         """Undo average filter."""
-
         ai = -self.fu
         previous = self.prev
         for i in range(len(scanline)):
@@ -532,7 +525,6 @@ class BaseFilter:
 
     def __do_filter_average(self, scanline, result):
         """Average filter."""
-
         ai = -self.fu
         previous = self.prev
         for i in range(len(result)):
@@ -547,7 +539,6 @@ class BaseFilter:
 
     def __undo_filter_paeth(self, scanline):
         """Undo Paeth filter."""
-
         ai = -self.fu
         previous = self.prev
         for i in range(len(scanline)):
@@ -572,7 +563,6 @@ class BaseFilter:
 
     def __do_filter_paeth(self, scanline, result):
         """Paeth filter."""
-
         # http://www.w3.org/TR/PNG/#9Filter-type-4-Paeth
         ai = -self.fu
         previous = self.prev
@@ -631,11 +621,10 @@ class BaseFilter:
 
     def _filter_scanline(self, filter_type, line, result):
         """Apply a scanline filter to a scanline.
+
         `filter_type` specifies the filter type (0 to 4)
         'line` specifies the current (unfiltered) scanline as a sequence
-        of bytes;
-        """
-
+        of bytes; """
         assert 0 <= filter_type < 5
         if self.prev is None:
             # We're on the first line.  Some of the filters can be reduced
@@ -1009,10 +998,11 @@ class Writer:
         return p,None
 
     def write(self, outfile, rows):
-        """Write a PNG image to the output file.  `rows` should be
-        an iterable that yields each row in boxed row flat pixel
-        format.  The rows should be the rows of the original image,
-        so there should be ``self.height`` rows of ``self.width *
+        """Write a PNG image to the output file.
+
+        `rows` should be an iterable that yields each row in boxed row
+        flat pixel format. The rows should be the rows of the original
+        image, so there should be ``self.height`` rows of ``self.width *
         self.planes`` values.  If `interlace` is specified (when
         creating the instance), then an interlaced PNG file will
         be written.  Supply the rows in the normal image order;
@@ -1036,8 +1026,7 @@ class Writer:
                   (nrows, self.height))
 
     def write_passes(self, outfile, rows, packed=False):
-        """
-        Write a PNG image to the output file.
+        """Write a PNG image to the output file.
 
         Most users are expected to find the :meth:`write` or
         :meth:`write_array` method more convenient.
@@ -1091,7 +1080,7 @@ class Writer:
             write_chunk(outfile, 'sBIT',
                 struct.pack('%dB' % self.planes,
                             *[self.rescale[0]]*self.planes))
-        
+
         # :chunk:order: Without a palette (PLTE chunk), ordering is
         # relatively relaxed.  With one, gAMA chunk must precede PLTE
         # chunk which must precede tRNS and bKGD.
@@ -1155,8 +1144,7 @@ class Writer:
         write_chunk(outfile, 'IEND')
 
     def idat(self, rows, packed=False):
-        """Generator that produce IDAT chunks from rows
-        """
+        """Generator that produce IDAT chunks from rows"""
         # http://www.w3.org/TR/PNG/#11IDAT
         if self.compression is not None:
             compressor = zlib.compressobj(self.compression)
@@ -1536,9 +1524,7 @@ register_extra_filter(adapt_entropy, 'entropy')
 
 
 def parse_mode(mode, default_bitdepth=None):
-    '''Parse PIL-style mode and return tuple (grayscale, alpha, bitdeph)
-    or None if it's not possible to decode mode
-    '''
+    """Parse PIL-style mode and return tuple (grayscale, alpha, bitdeph)"""
     # few special cases
     if mode == 'P':
         # Don't know what is pallette

@@ -1,18 +1,13 @@
-# encoding: utf-8
+"""
+This file comprises the tests that are internally validated (as
+opposed to tests which produce output files that are externally
+validated).  Primarily they are unittests.
 
-# This file comprises the tests that are internally validated (as
-# opposed to tests which produce output files that are externally
-# validated).  Primarily they are unittests.
+Note that it is difficult to internally validate the results of
+writing a PNG file.  The only thing we can do is read it back in
+again, which merely checks consistency, not that the PNG file we
+produce is valid."""
 
-# Note that it is difficult to internally validate the results of
-# writing a PNG file.  The only thing we can do is read it back in
-# again, which merely checks consistency, not that the PNG file we
-# produce is valid.
-
-# Run the tests from the command line:
-#   python -c 'import test_png;test_png.runTest()'
-# If you have nose installed you can use that:
-#   nosetests .
 from __future__ import generators
 
 # (For an in-memory binary file IO object) We use BytesIO where
@@ -51,7 +46,9 @@ import sys
 
 from png import strtobytes      # Don't do this at home.
 
+
 def buf_emu(not_buffer):
+    """Buffer emulator"""
     if hasattr(not_buffer, 'tostring'):
         return not_buffer.tostring()
     else:
@@ -85,10 +82,6 @@ except ImportError:
     class logging:
         warning = staticmethod(warning)
         info = staticmethod(info)
-
-
-def runTest():
-    unittest.main(__name__)
 
 
 def group(s, n):
@@ -146,7 +139,6 @@ def mycallersname():
     "mycallersname()" textually appears).  Returns None if this cannot
     be determined.
     """
-
     # http://docs.python.org/library/inspect.html#the-interpreter-stack
     import inspect
 
@@ -157,12 +149,13 @@ def mycallersname():
       inspect.getouterframes(frame)[2])
     return funname
 
+
 def seqtobytes(s):
     """Convert a sequence of integers to a *bytes* instance.  Good for
     plastering over Python 2 / Python 3 cracks.
     """
-
     return strtobytes(''.join([chr(x) for x in s]))
+
 
 class Test(unittest.TestCase):
     # This member is used by the superclass.  If we don't define a new
@@ -874,7 +867,7 @@ class Test(unittest.TestCase):
         self.assertEqual(list(out), [50, 53, 56, 184, 188, 192])  # paeth
 
     def testUnfilterScanlinePaeth(self):
-        # This tests more edge cases in the paeth unfilter
+        """This tests more edge cases in the paeth unfilter"""
         scanprev = array('B', [2, 0, 0, 0, 9, 11])
         scanline = array('B', [4, 6, 10, 9, 100, 101, 102])
         filter_ = png.Filter(24, prev=scanprev)
@@ -883,8 +876,8 @@ class Test(unittest.TestCase):
         self.assertEqual(list(out), [8, 10, 9, 108, 111, 113])  # paeth
 
     def testModifyRows(self):
-        # Tests that the rows yielded by the pixels generator
-        # can be safely modified.
+        """Tests that the rows yielded by the pixels generator
+        can be safely modified."""
         k = 'f02n0g08'
         pngsuite.png[k].seek(0)
         r1 = png.Reader(bytes=pngsuite.png[k].read())

@@ -1,6 +1,5 @@
 doc-warnings: yes
 test-warnings: yes
-strictness: high
 
 # many redefined builtins for compatiblity reason
 pylint:

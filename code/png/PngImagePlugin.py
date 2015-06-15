@@ -23,12 +23,12 @@
 # LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE
 # OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
 # PERFORMANCE OF THIS SOFTWARE.
-
-__version__ = "0.1.0"
-
 from PIL import Image, ImageFile
 import array
 import png
+__version__ = "0.1.0"
+
+
 try:
     from itertools import izip_longest as zip_l
 except ImportError:
