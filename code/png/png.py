@@ -177,7 +177,7 @@ __version__ = "0.1.1"
 __all__ = ['png_signature', 'Image', 'Reader', 'Writer',
            'Error', 'FormatError', 'ChunkError',
            'Filter', 'register_extra_filter',
-           'write_chunks', 'from_array',
+           'write_chunks', 'from_array', 'parse_mode',
            'read_pam_header', 'read_pnm_header', 'write_pnm']
 
 
@@ -1535,7 +1535,48 @@ def adapt_entropy(line, cfg, filter_obj):
 register_extra_filter(adapt_entropy, 'entropy')
 
 
-def from_array(a, mode=None, info={}):
+def parse_mode(mode, default_bitdepth=None):
+    '''Parse PIL-style mode and return tuple (grayscale, alpha, bitdeph)
+    or None if it's not possible to decode mode
+    '''
+    if mode is None:
+        return None
+
+    # few special cases
+    if mode == 'P':
+        # Don't know what is pallette
+        return None
+    elif mode == '1':
+        # Logical
+        return (True, False, 1)
+    elif mode == 'I':
+        # Integer
+        return (True, False, 16)
+    # here we go
+    if mode.startswith('L'):
+        grayscale = True
+        mode = mode[1:]
+    elif mode.startswith('RGB'):
+        grayscale = False
+        mode = mode[3:]
+    else:
+        raise Error('Unknown colour mode:' + mode)
+
+    if mode.startswith('A'):
+        alpha = True
+        mode = mode[1:]
+    else:
+        alpha = False
+    bitdepth = default_bitdepth
+    if mode.startswith(';'):
+        try:
+            bitdepth = int(mode[1:])
+        except (TypeError, ValueError):
+            raise Error('Unsupported bitdepth mode:' + mode[1:])
+    return (grayscale, alpha, bitdepth)
+
+
+def from_array(a, mode=None, info=None):
     """Create a PNG :class:`Image` object from a 2- or 3-dimensional
     array.  One application of this function is easy PIL-style saving:
     ``png.from_array(pixels, 'L').save('foo.png')``.
@@ -1619,39 +1660,28 @@ def from_array(a, mode=None, info={}):
     mode is ``'RGB'`` or ``'RGBA'``.
     """
 
-    # We abuse the *info* parameter by modifying it.  Take a copy here.
-    # (Also typechecks *info* to some extent).
-    info = dict(info)
+    # typechecks *info* to some extent.
+    if info is None:
+        info = {}
+    else:
+        info = dict(info)
 
     # Syntax check mode string.
-    bitdepth = None
-    try:
-        # Assign the 'L' or 'RGBA' part to `gotmode`.
-        if mode.startswith('L'):
-            gotmode = 'L'
-            mode = mode[1:]
-        elif mode.startswith('RGB'):
-            gotmode = 'RGB'
-            mode = mode[3:]
-        else:
-            raise Error()
-        if mode.startswith('A'):
-            gotmode += 'A'
-            mode = mode[1:]
+    parsed_mode = parse_mode(mode)
+    if parsed_mode is None:
+        (grayscale, alpha, bitdepth) = (None, None, None)
+    else:
+        (grayscale, alpha, bitdepth) = parsed_mode
 
-        # Skip any optional ';'
-        while mode.startswith(';'):
-            mode = mode[1:]
-
-        # Parse optional bitdepth
-        if mode:
-            try:
-                bitdepth = int(mode)
-            except (TypeError, ValueError):
-                raise Error()
-    except Error:
-        raise Error("mode string should be 'RGB' or 'L;16' or similar.")
-    mode = gotmode
+    # Colour format.
+    if 'greyscale' in info and grayscale is not None:
+        if bool(info['greyscale']) != grayscale:
+            raise Error("info['greyscale'] should match mode.")
+    info['greyscale'] = grayscale
+    if 'alpha' in info and alpha is not None:
+        if bool(info['alpha']) != alpha:
+            raise Error("info['alpha'] should match mode.")
+    info['alpha'] = alpha
 
     # Get bitdepth from *mode* if possible.
     if bitdepth:
@@ -1659,6 +1689,16 @@ def from_array(a, mode=None, info={}):
             raise Error("mode bitdepth (%d) should match info bitdepth (%d)." %
               (bitdepth, info['bitdepth']))
         info['bitdepth'] = bitdepth
+
+    if grayscale is not None and alpha is not None:
+        planes = (3, 1)[grayscale] + alpha
+    else:
+        planes = None
+    if 'planes' in info:
+        if planes is None:
+            planes = info['planes']
+        elif info['planes'] != planes:
+            raise Error("info['planes'] should match mode.")
 
     # Fill in and/or check entries in *info*.
     # Dimensions.
@@ -1678,20 +1718,6 @@ def from_array(a, mode=None, info={}):
             raise Error(
               "len(a) does not work, supply info['height'] instead.")
         info['height'] = l
-    # Colour format.
-    if 'greyscale' in info:
-        if bool(info['greyscale']) != ('L' in mode):
-            raise Error("info['greyscale'] should match mode.")
-    info['greyscale'] = 'L' in mode
-    if 'alpha' in info:
-        if bool(info['alpha']) != ('A' in mode):
-            raise Error("info['alpha'] should match mode.")
-    info['alpha'] = 'A' in mode
-
-    planes = len(mode)
-    if 'planes' in info:
-        if info['planes'] != planes:
-            raise Error("info['planes'] should match mode.")
 
     # In order to work out whether we the array is 2D or 3D we need its
     # first row, which requires that we take a copy of its iterator.
@@ -1737,7 +1763,7 @@ def from_array(a, mode=None, info={}):
                 bitdepth = 8 * dtype.itemsize
         info['bitdepth'] = bitdepth
 
-    for thing in 'width height bitdepth greyscale alpha'.split():
+    for thing in ('width', 'height', 'bitdepth', 'greyscale', 'alpha'):
         assert thing in info
     return Image(a, info)
 
