@@ -81,7 +81,7 @@ class PngImageFile(ImageFile.ImageFile):
         elif 16 > bitdepth > 8 and self.png.greyscale:
             x, y, pixels, meta = self.png._as_rescale(direct, 16)
         # PIL does not support RGB 16bit/channel
-        elif bitdepth != 8 and not self.png.greyscale:
+        elif bitdepth != 8 and (not self.png.greyscale or self.png.alpha):
             x, y, pixels, meta = self.png._as_rescale(direct, 8)
         else:
             x, y, pixels, meta = direct()
@@ -99,8 +99,6 @@ class PngImageFile(ImageFile.ImageFile):
                 self.rawmode = self.mode + ';' + str(meta['bitdepth']) + 'B'
         else:
             self.rawmode = self.mode
-        if self.rawmode == 'LA;16B':
-            self.mode = 'RGBA'  # No native LA 16 bit in PIL
         self.pixels = pixels
         # image data
         self.tile = [("raw", (0, 0) + self.size, 0, self.rawmode)]
