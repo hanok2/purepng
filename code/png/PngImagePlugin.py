@@ -171,6 +171,7 @@ def get_palette(im):
 
 def _save(im, fp, filename):
     """save an image to disk (called by the save method)"""
+    encoderinfo = im.encoderinfo
 
     def rows(im):
         """Rows generator from image"""
@@ -230,7 +231,7 @@ def _save(im, fp, filename):
                 transparency = None
             pass  # triade will pass to writer
         else:
-            if "transparency" in im.encoderinfo:
+            if "transparency" in encoderinfo:
                 # don't bother with transparency if it's an RGBA
                 # and it's in the info dict. It's probably just stale.
                 raise IOError("cannot use transparency for this mode")
@@ -244,7 +245,7 @@ def _save(im, fp, filename):
     writer = png.Writer(size=im.size,
                         bitdepth=bits,
                         transparent=transparency,
-                        compression=im.encoderinfo.get("compress_level", -1),
+                        compression=encoderinfo.get("compress_level", -1),
                         **meta)
 
     writer.write(fp, rows(im))
