@@ -106,13 +106,15 @@ class PngImageFile(ImageFile.ImageFile):
             self.info['gamma'] = meta['gamma']
         if 'icc_profile' in meta:
             self.info['icc_profile'] = meta['icc_profile']
-        if 'physical' in meta:
-            if meta['physical'][1] == 1:
-                self.info['dpi'] = (int(meta['physical'][0][0] * 0.0254 + 0.5),
-                                    int(meta['physical'][0][1] * 0.0254 + 0.5))
-            elif meta['physical'][1] == 0:
-                self.info['aspect'] = (meta['physical'][0][0],
-                                       meta['physical'][0][1])
+        if 'resolution' in meta:
+            if meta['resolution'][1] == 1:
+                self.info['dpi'] = (int(meta['resolution'][0][0] * 0.0254 +
+                                        0.5),
+                                    int(meta['resolution'][0][1] * 0.0254 +
+                                        0.5))
+            elif meta['resolution'][1] == 0:
+                self.info['aspect'] = (meta['resolution'][0][0],
+                                       meta['resolution'][0][1])
         self.info.update(meta['text'])  # experimental
 
     def verify(self):
@@ -235,9 +237,9 @@ def _save(im, fp, filename):
                 raise IOError("cannot use transparency for this mode")
 
     if 'aspect' in im.info:
-        meta['physical'] = (meta.pop('aspect'), 0)
+        meta['resolution'] = (meta.pop('aspect'), 0)
     if 'dpi' in im.info:
-        meta['physical'] = (meta.pop('dpi'), 'i')
+        meta['resolution'] = (meta.pop('dpi'), 'i')
     meta.pop('transparency', None)
 
     writer = png.Writer(size=im.size,

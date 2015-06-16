@@ -438,33 +438,6 @@ def check_text(text, w_kwargs):
     return text
 
 
-def check_phy(physical):
-    """
-    Handle most way of write physical dimensions.
-
-    Convetr them to ((unit_by_x, unit_by_y), is_meter)
-    """
-    if physical is None:
-        return
-    # All in row
-    if len(physical) == 3:
-        return ((physical[0], physical[1]), physical[2])
-    # Ensure length and convert all false to 0 (no unit)
-    if len(physical) == 1 or not physical[1]:
-        physical = (physical[0], 0)
-    # Single dimension
-    if isinstance(physical[0], float) or isinteger(physical[0]):
-        physical = ((physical[0], physical[0]), physical[1])
-    # Unit conversion
-    if physical[1] in (1, 'm', 'meter'):
-        physical = (physical[0], 1)
-    elif physical[1] in ('i', 'in', 'inch'):
-        physical = ((int(physical[0][0] / 0.0254 + 0.5),
-                int(physical[0][1] / 0.0254 + 0.5)), 1)
-    elif physical[1] in ('cm', 'centimeter'):
-        physical = ((physical[0][0] * 100,
-                     physical[0][1] * 100), 1)
-    return physical
 
 
 class Error(Exception):
@@ -747,7 +720,7 @@ class Writer:
                  filter_type=None,
                  icc_profile=None,
                  icc_profile_name="ICC Profile",
-                 physical=None,
+                 resolution=None,
                  text=None,
                  **kwargs
                  ):
@@ -785,7 +758,7 @@ class Writer:
           Write ICC Profile
         icc_profile_name
           Name for ICC Profile
-        physical
+        resolution
           Physical parameters of pixel
         The image size (in pixels) can be specified either by using the
         `width` and `height` arguments, or with the single `size`
@@ -883,12 +856,14 @@ class Writer:
         be callable passed with this argument.
         (see more at :meth:`register_extra_filter`)
 
-        `physical` supposed two be tuple of two parameterts: pixels per unit
+        `resolution` supposed two be tuple of two parameterts: pixels per unit
         and unit type; unit type may be omitted
         pixels per unit could be simple integer or tuple of (ppu_x, ppu_y)
+        Also possible to use all three parameters im row
         Examples:
-            physical = ((1,4),)  # wide pixels (4:1) without unit specifier
-            physical = (300, 'inch')  # 300dpi in both dimensions
+            resolution = ((1, 4), )  # wide pixels (4:1) without unit specifier
+            resolution = (300, 'inch')  # 300dpi in both dimensions
+            resolution = (4, 1, 0)  # tall pixels (1:4) without unit specifier
         """
         width, height = check_sizes(kwargs.pop('size', None),
                                     width, height)
@@ -908,12 +883,15 @@ class Writer:
         if 'bytes_per_sample' in kwargs and not bitdepth:
             warnings.warn('please use bitdepth instead of bytes_per_sample',
                           DeprecationWarning)
-            bytes_per_sample = kwargs.pop('bytes_per_sample')
-            if bytes_per_sample not in (0.125, 0.25, 0.5, 1, 2):
+            if kwargs['bytes_per_sample'] not in (0.125, 0.25, 0.5, 1, 2):
                 raise ValueError(
                     "bytes per sample must be .125, .25, .5, 1, or 2")
-            bitdepth = int(8*bytes_per_sample)
-            del bytes_per_sample
+            bitdepth = int(8 * kwargs.pop('bytes_per_sample'))
+
+        if not resolution and 'physical' in kwargs:
+            resolution = kwargs.pop('physical')
+            warnings.warn('please use resolution instead of physilcal',
+                          DeprecationWarning)
 
         if not isinteger(bitdepth) or bitdepth < 1 or 16 < bitdepth:
             raise ValueError("bitdepth (%r) must be a postive integer <= 16" %
@@ -921,7 +899,7 @@ class Writer:
 
         if filter_type is None:
             filter_type = 0
-        if isinstance(filter_type, basestring):
+        elif isinstance(filter_type, basestring):
             str_ftype = str(filter_type).lower()
             filter_names = {'none': 0,
                             'sub': 1,
@@ -972,8 +950,8 @@ class Writer:
             raise ValueError(
                 "bit depth must be 8 or less for images with palette")
 
-        transparent = check_color(transparent, greyscale, 'transparent')
-        background = check_color(background, greyscale, 'background')
+        self.transparent = check_color(transparent, greyscale, 'transparent')
+        self.background = check_color(background, greyscale, 'background')
         self.text = check_text(text, kwargs)
         # At the moment the `planes` argument is ignored;
         # its purpose is to act as a dummy so that
@@ -992,8 +970,6 @@ class Writer:
         # convention is relied upon later on.
         self.width = width
         self.height = height
-        self.transparent = transparent
-        self.background = background
         self.gamma = gamma
         self.icc_profile = icc_profile
         if icc_profile:
@@ -1001,7 +977,7 @@ class Writer:
                 raise Error("ICC profile shoud have a name")
             else:
                 self.icc_profile_name = strtobytes(icc_profile_name)
-        self.physical = check_phy(physical)
+        self.set_resolution(resolution)
         self.greyscale = bool(greyscale)
         self.alpha = bool(alpha)
         self.bitdepth = int(bitdepth)
@@ -1016,6 +992,37 @@ class Writer:
 
         self.color_planes = (3, 1)[self.greyscale or colormap]
         self.planes = self.color_planes + self.alpha
+
+    def set_resolution(self, resolution=None):
+        """
+        Add physical pixel dimensions
+
+        Convert them from all documented represenrations
+        to ((unit_by_x, unit_by_y), is_meter) for inner usage
+        """
+        if resolution is None:
+            self.resolution = None
+            return
+        # All in row
+        if len(resolution) == 3:
+            self.resolution = ((resolution[0], resolution[1]), resolution[2])
+            return
+        # Ensure length and convert all false to 0 (no unit)
+        if len(resolution) == 1 or not resolution[1]:
+            resolution = (resolution[0], 0)
+        # Single dimension
+        if isinstance(resolution[0], float) or isinteger(resolution[0]):
+            resolution = ((resolution[0], resolution[0]), resolution[1])
+        # Unit conversion
+        if resolution[1] in (1, 'm', 'meter'):
+            resolution = (resolution[0], 1)
+        elif resolution[1] in ('i', 'in', 'inch'):
+            resolution = ((int(resolution[0][0] / 0.0254 + 0.5),
+                int(resolution[0][1] / 0.0254 + 0.5)), 1)
+        elif resolution[1] in ('cm', 'centimeter'):
+            resolution = ((resolution[0][0] * 100,
+                     resolution[0][1] * 100), 1)
+        self.resolution = resolution
 
     def make_palette(self):
         """Create the byte sequences for a ``PLTE`` and if necessary a
@@ -1150,12 +1157,12 @@ class Writer:
                 write_chunk(outfile, 'bKGD',
                             struct.pack("!3H", *self.background))
         # http://www.w3.org/TR/PNG/#11pHYs
-        if self.physical is not None:
+        if self.resolution is not None:
             write_chunk(outfile, 'pHYs',
                         struct.pack("!IIB",
-                                    self.physical[0][0],
-                                    self.physical[0][1],
-                                    self.physical[1]))
+                                    self.resolution[0][0],
+                                    self.resolution[0][1],
+                                    self.resolution[1]))
         if self.text:
             for k, v in self.text.items():
                 if not isinstance(v, bytes):
@@ -2332,7 +2339,7 @@ class Reader:
     def _process_pHYs(self, data):
         # http://www.w3.org/TR/PNG/#11pHYs
         ppux, ppuy, unit = struct.unpack('!IIB', data)
-        self.physical = ((ppux, ppuy), unit)
+        self.resolution = ((ppux, ppuy), unit)
 
     def idat(self, lenient=False):
         """Iterator that yields all the ``IDAT`` chunks as strings."""
@@ -2397,7 +2404,7 @@ class Reader:
             meta[attr] = getattr(self, attr)
         meta['size'] = (self.width, self.height)
         for attr in ('gamma', 'transparent', 'background',
-                     'icc_profile', 'icc_profile_name', 'physical', 'text'):
+                     'icc_profile', 'icc_profile_name', 'resolution', 'text'):
             a = getattr(self, attr, None)
             if a is not None:
                 meta[attr] = a

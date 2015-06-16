@@ -138,8 +138,8 @@ Ignored when reading.  Not generated.
 When reading a PNG image the ``pHYs`` chunk is converted to form
 ((<pixel_per_unit_x>, <pixel_per_unit_y>), <unit_is_meter>)
 This tuple is returned in the ``info`` dictionary:
-``info['physical']``. 
-When writing, the ``physical`` argument to the :meth:`png.Writer`
+``info['resolution']``. 
+When writing, the ``resolution`` argument to the :meth:`png.Writer`
 class will generate a ``pHYs`` chunk. Argument could be tuple same as
 reading result, but also possible some usability modificatuion:
 * if both resolutions are same it could be written as single number instead of

@@ -462,7 +462,7 @@ class Test(unittest.TestCase):
 
     def testPhyAspect(self):
         """
-        Test that physical is read and could be correctly applied
+        Test that resolution is read and could be correctly applied
 
         The first (cdf) image is an example of flat (horizontal) pixels,
         where the pHYS chunk (x is 1 per unit, y = 4 per unit) must take
@@ -471,45 +471,47 @@ class Test(unittest.TestCase):
         pngsuite.png['cdfn2c08'].seek(0)
         r = png.Reader(pngsuite.png['cdfn2c08'])
         x, y, pixels, info = r.read()
-        self.assertEqual('physical' in info, True)
-        self.assertEqual(x / info['physical'][0][0],
-                         y / info['physical'][0][1])
+        self.assertEqual('resolution' in info, True)
+        self.assertEqual(x / info['resolution'][0][0],
+                         y / info['resolution'][0][1])
 
         pngsuite.png['cdhn2c08'].seek(0)
         r = png.Reader(pngsuite.png['cdhn2c08'])
         x, y, pixels, info = r.read()
-        self.assertEqual('physical' in info, True)
-        self.assertEqual(x / info['physical'][0][0],
-                         y / info['physical'][0][1])
+        self.assertEqual('resolution' in info, True)
+        self.assertEqual(x / info['resolution'][0][0],
+                         y / info['resolution'][0][1])
 
     def testPhyResolution(self):
-        """Test that physical measures is read and represent printing size
+        """
+        Test that resolutions is read and represent printing size
 
         This should result in a picture of 3.2 cm square.
         """
         pngsuite.png['cdun2c08'].seek(0)
         r = png.Reader(pngsuite.png['cdun2c08'])
-        x, y, pixels, info = r.read()
-        self.assertEqual('physical' in info, True)
-        self.assertEqual(info['physical'][1], 1)  # unit is meter
-        self.assertEqual(float(x) / info['physical'][0][0], 0.032)
-        self.assertEqual(float(y) / info['physical'][0][1], 0.032)
+        x, y, _, info = r.read()
+        self.assertEqual('resolution' in info, True)
+        self.assertEqual(info['resolution'][1], 1)  # unit is meter
+        self.assertEqual(float(x) / info['resolution'][0][0], 0.032)
+        self.assertEqual(float(y) / info['resolution'][0][1], 0.032)
 
     def testPhyWrite(self):
-        """Test that physical measures is correctly written
+        """
+        Test that resolution is correctly written
 
         This should result in a picture of 3.2 cm square.
         """
         pngsuite.png['basn0g16'].seek(0)
         r = png.Reader(pngsuite.png['basn0g16'])
         x, y, pixels, info = r.read()
-        info['physical'] = (10, 'cm')  # 10 pixel per cm
+        info['resolution'] = (10, 'cm')  # 10 pixel per cm
         test_phy = topngbytes('text_phy.png', pixels, x, y, **info)
         x, y, pixels, info_r = png.Reader(bytes=test_phy).read()
-        self.assertEqual('physical' in info_r, True)
-        self.assertEqual(info_r['physical'][1], 1)  # unit is meter
-        self.assertEqual(float(x) / info_r['physical'][0][0], 0.032)
-        self.assertEqual(float(y) / info_r['physical'][0][1], 0.032)
+        self.assertEqual('resolution' in info_r, True)
+        self.assertEqual(info_r['resolution'][1], 1)  # unit is meter
+        self.assertEqual(float(x) / info_r['resolution'][0][0], 0.032)
+        self.assertEqual(float(y) / info_r['resolution'][0][1], 0.032)
 
     def testWinfo(self):
         """
@@ -519,7 +521,7 @@ class Test(unittest.TestCase):
         pngsuite.png['basn2c16'].seek(0)
         r = png.Reader(file=pngsuite.png['basn2c16'])
         info = r.read()[3]
-        w = png.Writer(**info)
+        _ = png.Writer(**info)
 
     def testText(self):
         """Test text information saving and retrieving"""
@@ -584,6 +586,8 @@ class Test(unittest.TestCase):
 
     def testTrnsBuffer(self):
         """
+        Test buffer compatibility
+
         Test that reading a type 2 PNG with tRNS chunk yields each
         row as buffer-compatible type (using asDirect).
         """
