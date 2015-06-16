@@ -1024,12 +1024,13 @@ class Writer:
                      resolution[0][1] * 100), 1)
         self.resolution = resolution
 
-    def make_palette(self):
-        """Create the byte sequences for a ``PLTE`` and if necessary a
-        ``tRNS`` chunk.  Returned as a pair (*p*, *t*).  *t* will be
-        ``None`` if no ``tRNS`` chunk is necessary.
+    def _write_palette(self, outfile):
         """
+        Write``PLTE`` and if necessary a ``tRNS`` chunk to.
 
+        This method should be called only from ``write_idat`` method
+        or chunk order will be ruined.
+        """
         p = bytearray()
         t = bytearray()
 
@@ -1037,11 +1038,12 @@ class Writer:
             p.extend(x[0:3])
             if len(x) > 3:
                 t.append(x[3])
-        p = bytearray_to_bytes(p)
-        t = bytearray_to_bytes(t)
+
+        write_chunk(outfile, 'PLTE', bytearray_to_bytes(p))
         if t:
-            return p,t
-        return p,None
+            # tRNS chunk is optional. Only needed if palette entries
+            # have alpha.
+            write_chunk(outfile, 'tRNS', bytearray_to_bytes(t))
 
     def write(self, outfile, rows):
         """
@@ -1107,7 +1109,6 @@ class Writer:
                     struct.pack("!2I5B", self.width, self.height,
                                 self.bitdepth, self.color_type,
                                 0, 0, self.interlace))
-
         # See :chunk:order
         # http://www.w3.org/TR/PNG/#11gAMA
         if self.gamma is not None:
@@ -1126,18 +1127,12 @@ class Writer:
             write_chunk(outfile, 'sBIT',
                 struct.pack('%dB' % self.planes,
                             *[self.rescale[0]]*self.planes))
-
         # :chunk:order: Without a palette (PLTE chunk), ordering is
         # relatively relaxed.  With one, gAMA chunk must precede PLTE
         # chunk which must precede tRNS and bKGD.
         # See http://www.w3.org/TR/PNG/#5ChunkOrdering
         if self.palette:
-            p,t = self.make_palette()
-            write_chunk(outfile, 'PLTE', p)
-            if t:
-                # tRNS chunk is optional. Only needed if palette entries
-                # have alpha.
-                write_chunk(outfile, 'tRNS', t)
+            self._write_palette(outfile)
 
         # http://www.w3.org/TR/PNG/#11tRNS
         if self.transparent is not None:
@@ -1222,7 +1217,7 @@ class Writer:
             spb = 8 // self.bitdepth
 
             def extend(sl):
-                """Pack into bytes befor byteextend"""
+                """Pack into bytes before byteextend"""
                 a = bytearray(sl)
                 # Adding padding bytes so we can group into a whole
                 # number of spb-tuples.
