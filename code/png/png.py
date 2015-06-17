@@ -155,6 +155,7 @@ except ImportError:
 import math
 # http://www.python.org/doc/2.4.4/lib/module-operator.html
 import operator
+import datetime
 import struct
 import sys
 import zlib
@@ -410,6 +411,26 @@ def check_color(c, greyscale, which):
             raise ValueError(
                 "%s colour must be a triple of integers" % which)
     return c
+
+
+def check_time(time):
+    """Convert time from most popular representations to datetime"""
+    if time is None:
+        return None
+    if isinstance(time, datetime.date):
+        res = datetime.datetime.utcnow()
+        res.replace(year=time.year, month=time.month, day=time.day)
+        return res
+    if isinstance(time, datetime.time):
+        return datetime.datetime.combine(datetime.date.today(), time)
+    if isinteger(time):
+        return datetime.datetime.utcfromtimestamp(time)
+    if isinstance(time, basestring):
+        if time.lower() == 'now':
+            return datetime.datetime.utcnow()
+        raise ValueError("Unsupported datetime format")
+        # TODO: parsingn some popular strings
+    return time
 
 
 def check_text(text, w_kwargs):
@@ -722,6 +743,7 @@ class Writer:
                  icc_profile_name="ICC Profile",
                  resolution=None,
                  text=None,
+                 modification_time=None,
                  **kwargs
                  ):
         """
@@ -992,6 +1014,12 @@ class Writer:
 
         self.color_planes = (3, 1)[self.greyscale or colormap]
         self.planes = self.color_planes + self.alpha
+        if (isinstance(modification_time, basestring) and
+                modification_time.lower() == 'write') or\
+                modification_time is True:
+            self.modification_time = True
+        else:
+            self.modification_time = check_time(modification_time)
 
     def set_resolution(self, resolution=None):
         """
@@ -1158,6 +1186,14 @@ class Writer:
                                     self.resolution[0][0],
                                     self.resolution[0][1],
                                     self.resolution[1]))
+        # http://www.w3.org/TR/PNG/#11tIME
+        if self.modification_time is not None:
+            if self.modification_time is True:
+                self.modification_time = check_time('now')
+            write_chunk(outfile, 'tIME',
+                        struct.pack("!H5B",
+                                    *(self.modification_time.timetuple()[:6])))
+        # http://www.w3.org/TR/PNG/#11textinfo
         if self.text:
             for k, v in self.text.items():
                 if not isinstance(v, bytes):
@@ -2335,6 +2371,13 @@ class Reader:
         # http://www.w3.org/TR/PNG/#11pHYs
         ppux, ppuy, unit = struct.unpack('!IIB', data)
         self.resolution = ((ppux, ppuy), unit)
+
+    def _process_tIME(self, data):
+        # http://www.w3.org/TR/PNG/#11tIME
+        fmt = "!H5B"
+        if len(data) != struct.calcsize(fmt):
+            raise FormatError("tIME chunk has incorrect length.")
+        self.last_mod_time = datetime.datetime(*struct.unpack(fmt, data))
 
     def idat(self, lenient=False):
         """Iterator that yields all the ``IDAT`` chunks as strings."""

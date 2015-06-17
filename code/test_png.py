@@ -506,7 +506,7 @@ class Test(unittest.TestCase):
         r = png.Reader(pngsuite.png['basn0g16'])
         x, y, pixels, info = r.read()
         info['resolution'] = (10, 'cm')  # 10 pixel per cm
-        test_phy = topngbytes('text_phy.png', pixels, x, y, **info)
+        test_phy = topngbytes('test_phy.png', pixels, x, y, **info)
         x, y, pixels, info_r = png.Reader(bytes=test_phy).read()
         self.assertEqual('resolution' in info_r, True)
         self.assertEqual(info_r['resolution'][1], 1)  # unit is meter
@@ -562,6 +562,20 @@ class Test(unittest.TestCase):
         test_a = topngbytes('text_a.png', pixels, x, y, **info_a)
         x, y, pixels, info_r = png.Reader(bytes=test_a).read()
         self.assertEqual(text, info_r.get('text'))
+
+    def testTIMEChunkIO(self):
+        """Consistency write/read test of tIME chunk """
+        pixels = [range(0, 8)] * 8
+        io = BytesIO()
+        p = dict(size=(len(pixels[0]), len(pixels)), modification_time=True)
+        w = png.Writer(**p)
+        w.write(io, pixels)
+        io.seek(0)
+        r = png.Reader(file=io)
+        r.read()
+        # Trim milliseconds, timezone, etc.
+        self.assertEqual(w.modification_time.timetuple()[:6],
+                         r.last_mod_time.timetuple()[:6])
 
     def testPackedIter(self):
         """Test iterator for row when using write_packed."""
