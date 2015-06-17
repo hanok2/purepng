@@ -153,15 +153,8 @@ def seqtobytes(s):
 
 
 class Test(unittest.TestCase):
-    """Main test unit"""
 
-    # This member is used by the superclass.  If we don't define a new
-    # class here then when we use self.assertRaises() and the PurePNG code
-    # raises an assertion then we get no proper traceback.  I can't work
-    # out why, but defining a new class here means we get a proper
-    # traceback.
-    class failureException(Exception):
-        pass
+    """Main test unit"""
 
     def helperLN(self, n):
         """Helper for L-tests"""
@@ -737,21 +730,15 @@ class Test(unittest.TestCase):
     def testFlat(self):
         """Test read_flat."""
         try:
-            from hashlib import md5 as md5_func
+            from hashlib import md5
         except ImportError:
             # On Python 2.4 there is no hashlib,
             # but there is special module for md5
-            import md5
-
-            def md5_func(string):
-                m = md5.new()
-                m.update(string)
-                return m
-
-        pngsuite.basn0g02.seek(0)
-        r = png.Reader(pngsuite.basn0g02)
-        x,y,pixel,meta = r.read_flat()
-        d = md5_func(seqtobytes(pixel)).hexdigest()
+            from md5 import md5
+        pngsuite.png['basn0g02'].seek(0)
+        r = png.Reader(pngsuite.png['basn0g02'])
+        pixel = r.read_flat()[2]
+        d = md5(seqtobytes(pixel)).hexdigest()
         self.assertEqual(d, '255cd971ab8cd9e7275ff906e5041aa0')
 
     def testfromarray(self):
@@ -791,56 +778,6 @@ class Test(unittest.TestCase):
         """Test saving with shortened mode (no ';')"""
         png.from_array([[0,1],[2,3]], 'L2').save(BytesIO())
         # TODO: read to check
-
-    # numpy dependent tests.  These are skipped (with a message to
-    # sys.stderr) if numpy cannot be imported.
-    def testNumpyuint16(self):
-        """numpy uint16."""
-        try:
-            import numpy
-        except ImportError:
-            logging.info("skipping numpy test")
-            return
-
-        rows = [[numpy.uint16(it) for it in range(0, 0x10000, 0x5555)]]
-        b = topngbytes('numpyuint16.png', rows, 4, 1,
-            greyscale=True, alpha=False, bitdepth=16)
-
-    def testNumpyuint8(self):
-        """numpy uint8."""
-        try:
-            import numpy
-        except ImportError:
-            logging.info("skipping numpy test")
-            return
-
-        rows = [[numpy.uint8(it) for it in range(0, 0x100, 0x55)]]
-        b = topngbytes('numpyuint8.png', rows, 4, 1,
-            greyscale=True, alpha=False, bitdepth=8)
-
-    def testNumpybool(self):
-        """numpy bool."""
-        try:
-            import numpy
-        except ImportError:
-            logging.info("skipping numpy test")
-            return
-
-        rows = [[numpy.bool(it) for it in (0, 1)]]
-        b = topngbytes('numpybool.png', rows, 2, 1,
-            greyscale=True, alpha=False, bitdepth=1)
-
-    def testNumpyarray(self):
-        """numpy array."""
-        try:
-            import numpy
-        except ImportError:
-            logging.info("skipping numpy test")
-            return
-
-        pixels = numpy.array([[0,0x5555],[0x5555,0xaaaa]], numpy.uint16)
-        img = png.from_array(pixels, 'L')
-        img.save(BytesIO())
 
     def paeth(self, x, a, b, c):
         """Paeth reference code"""
@@ -953,6 +890,45 @@ class Test(unittest.TestCase):
                   [2, 3, 0]]
         meta = dict(alpha=False, greyscale=True, bitdepth=2, planes=1)
         png.write_pnm(o, 3, 3, pixels, meta)
+
+try:
+    import numpy
+
+    class NumPyTest(unittest.TestCase):
+
+        """
+        NumPy dependent tests.
+
+        These are skipped (with a warning message) if numpy cannot be imported.
+        """
+
+        def testNumpyuint16(self):
+            """numpy uint16."""
+            rows = [[numpy.uint16(it) for it in range(0, 0x10000, 0x5555)]]
+            topngbytes('numpyuint16.png', rows, 4, 1,
+                       greyscale=True, alpha=False, bitdepth=16)
+
+        def testNumpyuint8(self):
+            """numpy uint8."""
+            rows = [[numpy.uint8(it) for it in range(0, 0x100, 0x55)]]
+            topngbytes('numpyuint8.png', rows, 4, 1,
+                       greyscale=True, alpha=False, bitdepth=8)
+
+        def testNumpybool(self):
+            """numpy bool."""
+            rows = [[numpy.bool(it) for it in (0, 1)]]
+            topngbytes('numpybool.png', rows, 2, 1,
+                       greyscale=True, alpha=False, bitdepth=1)
+
+        def testNumpyarray(self):
+            """numpy array."""
+            pixels = numpy.array([[0, 0x5555],
+                                  [0x5555, 0xaaaa]], numpy.uint16)
+            img = png.from_array(pixels, 'L')
+            img.save(BytesIO())
+
+except ImportError:
+    logging.warn("skipping numpy test")
 
 if __name__ == "__main__":
     unittest.main()
