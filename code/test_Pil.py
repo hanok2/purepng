@@ -35,7 +35,7 @@ except NameError:
     unicode = str
 
 
-class PilImageToPyPngAdapter:
+class PilImageToPyPngAdapter(object):
 
     """Allow reading PIL image as PurePNG rows"""
 
@@ -108,18 +108,15 @@ class BaseTest(unittest.TestCase):
                 return
 
             if delta is not None:
-                if abs(value1 - value2) <= delta:
-                    return
-                standardMsg = '%s != %s within %s delta' % (safe_repr(value1),
-                                                        safe_repr(value2),
-                                                        safe_repr(delta))
-            else:  # if delta is not None:
-                if round(abs(value1 - value2), places) == 0:
-                    return
-                standardMsg = '%s != %s within %r places' % (safe_repr(value1),
+                if abs(value1 - value2) > delta:
+                    return '%s != %s within %s delta' % (safe_repr(value1),
+                                                         safe_repr(value2),
+                                                         safe_repr(delta))
+            else:  # delta is None:
+                if round(abs(value1 - value2), places) != 0:
+                    return '%s != %s within %r places' % (safe_repr(value1),
                                                           safe_repr(value2),
                                                           places)
-            return standardMsg
 
         def compareIters(first, second):
             """Compare iterators"""
@@ -137,11 +134,10 @@ class BaseTest(unittest.TestCase):
                 else:
                     if errmsg is None:
                         errmsg = mymsg + '\n['
-                    errmsg = errmsg + ('' if errmsg.endswith('\n') else '\n')
-                    errmsg = errmsg + '\n'.join([repr(p) for p in passed])
-                    errmsg = errmsg + ('' if errmsg.endswith('\n') else '\n')
-                    errmsg = errmsg + ' - ' + repr(v1)
-                    errmsg = errmsg + '\n + ' + repr(v2)
+                    if passed:
+                        errmsg = errmsg + '\n' +\
+                            '\n'.join([repr(p) for p in passed])
+                    errmsg = errmsg + '\n - ' + repr(v1) + '\n + ' + repr(v2)
                     passed = []
 
             if errmsg is not None:
@@ -209,6 +205,7 @@ class ReadTest(BaseTest):
     """Reading test (read via PIL, read via PurePNG and compare)"""
 
     def runTest(self):
+        """Main test method"""
         if self.test_ is None:
             return
         test_file = self.test_
@@ -228,6 +225,7 @@ class WriteTest(BaseTest):
     """Writing test (write via PurePNG, re-read and compare with source)"""
 
     def runTest(self):
+        """Main test method"""
         if self.test_ is None:
             return
         test_file = self.test_
