@@ -567,8 +567,8 @@ class Test(unittest.TestCase):
         r = png.Reader(file=io)
         r.read()
         # Trim milliseconds, timezone, etc.
-        self.assertEqual(w.modification_time.timetuple()[:6],
-                         r.last_mod_time.timetuple()[:6])
+        self.assertEqual(w.modification_time[:6],
+                         r.last_mod_time[:6])
 
     def testPackedIter(self):
         """Test iterator for row when using write_packed."""
