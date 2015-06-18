@@ -927,6 +927,18 @@ try:
             img = png.from_array(pixels, 'L')
             img.save(BytesIO())
 
+        def testPalette(self):
+            """Palette as NumPy array"""
+            s = ['110010010011',
+                 '101011010100',
+                 '110010110101',
+                 '100010010011']
+            s = list(map(lambda x: list(map(int, x)), s))
+            palette = [(0x55, 0x55, 0x55), (0xff, 0x99, 0x99)]
+            palette_np = numpy.array(palette)  # creates a 2x3 array
+
+            png.Writer(len(s[0]), len(s), palette=palette_np, bitdepth=1)
+
 except ImportError:
     logging.warn("skipping numpy test")
 

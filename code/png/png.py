@@ -945,7 +945,8 @@ class Writer:
         self.filter_type = filter_type
 
         self.rescale = None
-        if palette:
+        self.palette = check_palette(palette)
+        if self.palette:
             if bitdepth not in (1, 2, 4, 8):
                 raise ValueError("with palette bitdepth must be 1, 2, 4, or 8")
             if transparent is not None:
@@ -977,10 +978,10 @@ class Writer:
                     bitdepth = targetbitdepth
                     del targetbitdepth
 
-        if bitdepth < 8 and (alpha or not greyscale and not palette):
+        if bitdepth < 8 and (alpha or not greyscale and not self.palette):
             raise ValueError(
               "bitdepth < 8 only permitted with greyscale or palette")
-        if bitdepth > 8 and palette:
+        if bitdepth > 8 and self.palette:
             raise ValueError(
                 "bit depth must be 8 or less for images with palette")
 
@@ -1018,9 +1019,8 @@ class Writer:
         self.compression = compression
         self.chunk_limit = chunk_limit
         self.interlace = bool(interlace)
-        self.palette = check_palette(palette)
 
-        colormap = bool(palette)
+        colormap = bool(self.palette)
         self.color_type = 4 * self.alpha + 2 * (not greyscale) + 1 * colormap
         assert self.color_type in (0, 2, 3, 4, 6)
 
