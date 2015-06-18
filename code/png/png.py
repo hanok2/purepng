@@ -147,11 +147,6 @@ And now, my famous members
 from array import array
 import itertools
 import logging
-
-try:  # See :pyver:old
-    from itertools import tee
-except ImportError:
-    tee = None
 import math
 # http://www.python.org/doc/2.4.4/lib/module-operator.html
 import operator
@@ -328,6 +323,19 @@ def interleave_planes(ipixels, apixels, ipsize, apsize):
     for i in range(apsize):
         out[i+ipsize:newtotal:newpsize] = apixels[i:atotal:apsize]
     return out
+
+
+def peekiter(iterable):
+    """Return first row and also iterable with same items as original"""
+    it = iter(iterable)
+    one = next(it)
+
+    def gen():
+        """Generator that returns first and proxy other items from source"""
+        yield one
+        while True:
+            yield next(it)
+    return (one, gen())
 
 
 def check_palette(palette):
@@ -1790,9 +1798,7 @@ def from_array(a, mode=None, info=None):
     # In order to work out whether we the array is 2D or 3D we need its
     # first row, which requires that we take a copy of its iterator.
     # We may also need the first row to derive width and bitdepth.
-    a, t = tee(a)
-    row = next(t)
-    del t
+    row, a = peekiter(a)
     try:
         row[0][0]
         threed = True
@@ -2854,22 +2860,6 @@ except TypeError:
 
     def newHarray(length=0):
         return array('H', [0] * length)
-
-
-if tee is None:  # There is no tee before Python 2.4
-    def tee(iterable, n=2):
-        it = iter(iterable)
-        deques = [list() for i in range(n)]
-
-        def gen(mydeque):
-            while True:
-                if not mydeque:             # when the local deque is empty
-                    newval = next(it)       # fetch a new value and
-                    for d in deques:        # load it to all the deques
-                        d.append(newval)
-                yield mydeque.pop(0)
-        return tuple([gen(d) for d in deques])
-
 
 # === Command Line Support ===
 
