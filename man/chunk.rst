@@ -163,6 +163,55 @@ When reading generate ``last_mod_time`` tuple which is time.structtime compatibl
 could be used to specify ``tIME`` value or indicate that it should be calculated
 as file writing time.
 
+PNG Extensions Chunks
+---------------------
+ftp://ftp.simplesystems.org/pub/png/documents/pngextensions.html
+``oFFs ``
+^^^^^^^^^
+
+Ignored when reading.  Not generated.
+
+``pCAL``
+^^^^^^^^
+
+Ignored when reading.  Not generated.
+
+``sCAL``
+^^^^^^^^
+
+Ignored when reading.  Not generated.
+
+``gIFg``
+^^^^^^^^
+
+Ignored when reading.  Not generated.
+
+``gIFx``
+^^^^^^^^
+
+Ignored when reading.  Not generated.
+
+``sTER``
+^^^^^^^^
+
+Ignored when reading.  Not generated.
+
+``dSIG``
+^^^^^^^^
+
+Ignored when reading.  Not generated.
+
+``fRAc``
+^^^^^^^^
+
+Ignored when reading.  Not generated.
+
+``gIFt``
+^^^^^^^^
+
+Ignored when reading.  Not generated.
+
+
 Non-standard Chunks
 -------------------
 
