@@ -208,9 +208,8 @@ def _rel_import(module, tgt):
     except SyntaxError:
         # On Python < 2.5 relative import cause syntax error
         exec("from " + module + " import " + tgt, globals(), locals())
-    except ValueError:
-        # relative import in non-package is ValueError, try absolute
-        # TODO: check error
+    except (ValueError, SystemError):
+        # relative import in non-package, try absolute
         exec("from " + module + " import " + tgt, globals(), locals())
     return eval(tgt)
 
@@ -387,11 +386,11 @@ def check_sizes(size, width, height):
     if width is not None and width != size[0]:
         raise ValueError(
           "size[0] (%r) and width (%r) should match when both are used."
-            % (size[0], width))
+                % (size[0], width))
     if height is not None and height != size[1]:
         raise ValueError(
           "size[1] (%r) and height (%r) should match when both are used."
-            % (size[1], height))
+                % (size[1], height))
     return size
 
 
@@ -487,7 +486,7 @@ class ChunkError(FormatError):
     """Error in chunk handling"""
 
 
-class BaseFilter:
+class BaseFilter(object):
 
     """
     Basic methods of filtering and other byte manipulations
@@ -726,7 +725,7 @@ except:
     BaseFilter = iBaseFilter
 
 
-class Writer:
+class Writer(object):
 
     """PNG encoder in pure Python."""
 
@@ -980,12 +979,10 @@ class Writer:
         # Ditto for `colormap` and `maxval`.
         popdict(kwargs, ('planes', 'colormap', 'maxval'))
 
-        text = kwargs.pop('text', {})
-        text.update(popdict(kwargs, _registered_kw))
-        self.set_text(text)
-
-        for ex_kw in ('resolution', 'modification_time'):
+        for ex_kw in ('text', 'resolution', 'modification_time'):
             getattr(self, 'set_' + ex_kw)(kwargs.pop(ex_kw, None))
+
+        self.text.update(popdict(kwargs, _registered_kw))
 
         if kwargs:
             warnings.warn("Unknown writer args: " + str(kwargs))
@@ -1219,8 +1216,7 @@ class Writer:
             if self.modification_time is True:
                 self.modification_time = check_time('now')
             write_chunk(outfile, 'tIME',
-                        struct.pack("!H5B",
-                                    *(self.modification_time[:6])))
+                        struct.pack("!H5B", *(self.modification_time[:6])))
         # http://www.w3.org/TR/PNG/#11textinfo
         if self.text:
             for k, v in self.text.items():
@@ -1852,7 +1848,7 @@ def from_array(a, mode=None, info=None):
 fromarray = from_array
 
 
-class Image:
+class Image(object):
 
     """
     A PNG image.
@@ -1895,7 +1891,8 @@ class Image:
             close()
 
 
-class _readable:
+class _readable(object):
+
     """A simple file-like interface for strings and arrays."""
 
     def __init__(self, buf):
@@ -1903,6 +1900,7 @@ class _readable:
         self.offset = 0
 
     def read(self, n):
+        """Read `n` chars from buffer"""
         r = self.buf[self.offset:self.offset + n]
         if isinstance(r, array):
             r = r.tostring()
@@ -1910,7 +1908,7 @@ class _readable:
         return r
 
 
-class Reader:
+class Reader(object):
 
     """PNG decoder in pure Python."""
 
@@ -2337,9 +2335,9 @@ class Reader:
     def _process_iCCP(self, data):
         i = data.index(zerobyte)
         self.icc_profile_name = data[:i]
-        compression = data[i + 1]
+        compression = data[i:i + 1]
         # TODO: Raise FormatError
-        assert (compression == zerobyte or compression == 0)
+        assert (compression == zerobyte)
         self.icc_profile = zlib.decompress(data[i + 2:])
 
     def _process_sBIT(self, data):
@@ -2367,7 +2365,7 @@ class Reader:
         except:
             pass
         # TODO: Raise FormatError
-        assert (data[i + 1] == zerobyte or data[i + 1] == 0) 
+        assert data[i:i + 1] == zerobyte
         text = zlib.decompress(data[i + 2:]).decode('latin-1')
         self.text[keyword] = text
 
@@ -2379,11 +2377,11 @@ class Reader:
             keyword = str(keyword, 'latin-1')
         except:
             pass
-        if (data[i + 1] != zerobyte and data[i + 1] != 0):
+        if (data[i:i + 1] != zerobyte):
             # TODO: Support for compression!!
             return
         # TODO: Raise FormatError
-        assert (data[i + 2] == zerobyte or data[i + 2] == 0)
+        assert (data[i + 1:i + 2] == zerobyte)
         data_ = data[i + 3:]
         i = data_.index(zerobyte)
         # skip language tag
@@ -2706,9 +2704,9 @@ class Reader:
         """
         Return image as RGB pixels.
 
-        RGB colour images are passed
-        through unchanged; greyscales are expanded into RGB
-        triplets (there is a small speed overhead for doing this).
+        RGB colour images are passed through unchanged;
+        greyscales are expanded into RGB  triplets
+        (there is a small speed overhead for doing this).
 
         An alpha channel in the source image will raise an exception.
 
