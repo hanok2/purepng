@@ -189,6 +189,10 @@ _adam7 = ((0, 0, 8, 8),
           (0, 2, 2, 4),
           (1, 0, 2, 2),
           (0, 1, 1, 2))
+# registered keywords
+# http://www.w3.org/TR/2003/REC-PNG-20031110/#11keywords
+_registered_kw = ('Title', 'Author', 'Description', 'Copyright', 'Software',
+                  'Disclaimer', 'Warning', 'Source', 'Comment')
 
 
 def group(s, n):
@@ -447,30 +451,17 @@ def check_time(value):
     raise ValueError("Unsupported time representation:" + repr(value))
 
 
-def check_text(text, w_kwargs):
-    """Reorganize text, pop text parameteres from kwargs dictionary"""
-    if not text:
-        text = {}
-    # Support for registered keywords as kwargs
-    if 'Title' in w_kwargs:
-        text['Title'] = w_kwargs.pop('Title')
-    if 'Author' in w_kwargs:
-        text['Author'] = w_kwargs.pop('Author')
-    if 'Description' in w_kwargs:
-        text['Description'] = w_kwargs.pop('Description')
-    if 'Copyright' in w_kwargs:
-        text['Copyright'] = w_kwargs.pop('Copyright')
-    if 'Software' in w_kwargs:
-        text['Software'] = w_kwargs.pop('Software')
-    if 'Disclaimer' in w_kwargs:
-        text['Disclaimer'] = w_kwargs.pop('Disclaimer')
-    if 'Warning' in w_kwargs:
-        text['Warning'] = w_kwargs.pop('Warning')
-    if 'Source' in w_kwargs:
-        text['Source'] = w_kwargs.pop('Source')
-    if 'Comment' in w_kwargs:
-        text['Comment'] = w_kwargs.pop('Comment')
-    return text
+def popdict(src, keys):
+    """
+    Extract all keys (with values) from `src` dictionary as new dictionary
+
+    values are removed from source dictionary.
+    """
+    new = {}
+    for key in keys:
+        if key in src:
+            new[key] = src.pop(key)
+    return new
 
 
 class Error(Exception):
@@ -753,9 +744,6 @@ class Writer:
                  filter_type=None,
                  icc_profile=None,
                  icc_profile_name="ICC Profile",
-                 resolution=None,
-                 text=None,
-                 modification_time=None,
                  **kwargs
                  ):
         """
@@ -792,8 +780,15 @@ class Writer:
           Write ICC Profile
         icc_profile_name
           Name for ICC Profile
-        resolution
-          Physical parameters of pixel
+
+        Extra keywords:
+            text
+                see :meth:`set_text`
+            modification_time
+                see :meth:`set_modification_time`
+            resolution
+                see :meth:`set_resolution`
+
         The image size (in pixels) can be specified either by using the
         `width` and `height` arguments, or with the single `size`
         argument.  If `size` is used it should be a pair (*width*,
@@ -889,15 +884,6 @@ class Writer:
         Custom strategies can be added with :meth:`register_extra_filter` or
         be callable passed with this argument.
         (see more at :meth:`register_extra_filter`)
-
-        `resolution` supposed two be tuple of two parameterts: pixels per unit
-        and unit type; unit type may be omitted
-        pixels per unit could be simple integer or tuple of (ppu_x, ppu_y)
-        Also possible to use all three parameters im row
-        Examples:
-            resolution = ((1, 4), )  # wide pixels (4:1) without unit specifier
-            resolution = (300, 'inch')  # 300dpi in both dimensions
-            resolution = (4, 1, 0)  # tall pixels (1:4) without unit specifier
         """
         width, height = check_sizes(kwargs.pop('size', None),
                                     width, height)
@@ -922,8 +908,8 @@ class Writer:
                     "bytes per sample must be .125, .25, .5, 1, or 2")
             bitdepth = int(8 * kwargs.pop('bytes_per_sample'))
 
-        if not resolution and 'physical' in kwargs:
-            resolution = kwargs.pop('physical')
+        if 'resolution' not in kwargs and 'physical' in kwargs:
+            kwargs['resolution'] = kwargs.pop('physical')
             warnings.warn('please use resolution instead of physilcal',
                           DeprecationWarning)
 
@@ -987,15 +973,19 @@ class Writer:
 
         self.transparent = check_color(transparent, greyscale, 'transparent')
         self.background = check_color(background, greyscale, 'background')
-        self.text = check_text(text, kwargs)
         # At the moment the `planes` argument is ignored;
         # its purpose is to act as a dummy so that
         # ``Writer(x, y, **info)`` works, where `info` is a dictionary
         # returned by Reader.read and friends.
         # Ditto for `colormap` and `maxval`.
-        kwargs.pop('planes', None)
-        kwargs.pop('colormap', None)
-        kwargs.pop('maxval', None)
+        popdict(kwargs, ('planes', 'colormap', 'maxval'))
+
+        text = kwargs.pop('text', {})
+        text.update(popdict(kwargs, _registered_kw))
+        self.set_text(text)
+
+        for ex_kw in ('resolution', 'modification_time'):
+            getattr(self, 'set_' + ex_kw)(kwargs.pop(ex_kw, None))
 
         if kwargs:
             warnings.warn("Unknown writer args: " + str(kwargs))
@@ -1012,7 +1002,6 @@ class Writer:
                 raise Error("ICC profile shoud have a name")
             else:
                 self.icc_profile_name = strtobytes(icc_profile_name)
-        self.set_resolution(resolution)
         self.greyscale = bool(greyscale)
         self.alpha = bool(alpha)
         self.bitdepth = int(bitdepth)
@@ -1026,7 +1015,19 @@ class Writer:
 
         self.color_planes = (3, 1)[self.greyscale or colormap]
         self.planes = self.color_planes + self.alpha
-        self.set_modification_time(modification_time)
+
+    def set_text(self, text=None, **kwargs):
+        """Add textual information.
+
+        All pairs in dictionary will be written, but keys should be latin-1;
+        registered keywords could be used as arguments.
+
+        When called more than once overwrite exist data.
+        """
+        if text is None:
+            text = {}
+        text.update(popdict(kwargs, _registered_kw))
+        self.text = text
 
     def set_modification_time(self, modification_time=True):
         """
@@ -1046,8 +1047,14 @@ class Writer:
         """
         Add physical pixel dimensions
 
-        Convert them from all documented represenrations
-        to ((unit_by_x, unit_by_y), is_meter) for inner usage
+        `resolution` supposed two be tuple of two parameterts: pixels per unit
+        and unit type; unit type may be omitted
+        pixels per unit could be simple integer or tuple of (ppu_x, ppu_y)
+        Also possible to use all three parameters im row
+
+        * resolution = ((1, 4), )  # wide pixels (4:1) without unit specifier
+        * resolution = (300, 'inch')  # 300dpi in both dimensions
+        * resolution = (4, 1, 0)  # tall pixels (1:4) without unit specifier
         """
         if resolution is None:
             self.resolution = None
