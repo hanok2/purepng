@@ -27,6 +27,7 @@ import struct
 import unittest
 import zlib
 import itertools
+import datetime
 
 try:
     from itertool import izip as zip
@@ -541,20 +542,54 @@ class Test(unittest.TestCase):
                                   1080, 1082, 1086, 1076, 1086, 1084, 33),
                                  '')
         # Embedded keyword test
-        info_e = info
+        info_e = dict(info)  # copy
         info_e.update(text)
         test_e = topngbytes('text_e.png', pixels, x, y, **info_e)
         x, y, pixels, info_r = png.Reader(bytes=test_e).read()
         self.assertEqual(text, info_r.get('text'))
 
         # Separate argument test
-        info_a = info
+        info_a = dict(info)
         info_a['text'] = text
         # Here we can use any keyword, not only registered
         info_a['text']['Goddamn'] = 'I can do ANYTHING!'
         test_a = topngbytes('text_a.png', pixels, x, y, **info_a)
         x, y, pixels, info_r = png.Reader(bytes=test_a).read()
         self.assertEqual(text, info_r.get('text'))
+
+    def testCreateTime(self):
+        """Test text of creation time (with data conversion from datetime)"""
+        # Use image as core for text
+        pngsuite.png['basn2c16'].seek(0)
+        r = png.Reader(file=pngsuite.png['basn2c16'])
+        x, y, pixels, info = r.read()
+        info1 = dict(info)
+        # In fact this is 4004 B.C. ;)
+        info1["Creation Time"] = datetime.datetime(4004, 10, 21, 9, 13)
+        test = topngbytes('text_cr-tim.png', pixels, x, y, **info1)
+        x, y, pixels, info_r = png.Reader(bytes=test).read()
+        txt = info_r.get('text')
+        if txt is not None:
+            self.assertEqual("4004-10-21T09:13:00", txt.get("Creation Time"))
+        else:
+            raise AssertionError("No text with Creation Time")
+
+    def testCreateTimeTu(self):
+        """Test text of creation time (with data conversion from tuple)"""
+        # Use image as core for text
+        pngsuite.png['basn2c16'].seek(0)
+        r = png.Reader(file=pngsuite.png['basn2c16'])
+        x, y, pixels, info = r.read()
+        info1 = dict(info)
+        # In fact this is 4004 B.C. ;)
+        info1["Creation Time"] = (4004, 10, 21, 9, 13)
+        test = topngbytes('text_cr-tim.png', pixels, x, y, **info1)
+        x, y, pixels, info_r = png.Reader(bytes=test).read()
+        txt = info_r.get('text')
+        if txt is not None:
+            self.assertEqual("4004-10-21T09:13:00", txt.get("Creation Time"))
+        else:
+            raise AssertionError("No text with Creation Time")
 
     def testTIMEChunkIO(self):
         """Consistency write/read test of tIME chunk """

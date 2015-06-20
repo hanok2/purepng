@@ -192,7 +192,8 @@ _adam7 = ((0, 0, 8, 8),
 # registered keywords
 # http://www.w3.org/TR/2003/REC-PNG-20031110/#11keywords
 _registered_kw = ('Title', 'Author', 'Description', 'Copyright', 'Software',
-                  'Disclaimer', 'Warning', 'Source', 'Comment')
+                  'Disclaimer', 'Warning', 'Source', 'Comment',
+                  'Creation Time')
 
 
 def group(s, n):
@@ -431,6 +432,8 @@ def check_time(value):
         return None
     if isinstance(value, (time.struct_time, tuple)):
         return value
+    if isinstance(value, datetime.datetime):
+        return value.timetuple()
     if isinstance(value, datetime.date):
         res = datetime.datetime.utcnow()
         res.replace(year=value.year, month=value.month, day=value.day)
@@ -438,8 +441,6 @@ def check_time(value):
     if isinstance(value, datetime.time):
         return datetime.datetime.combine(datetime.date.today(),
                                          value).timetuple()
-    if isinstance(value, datetime.datetime):
-        return value.timetuple()
     if isinteger(value):
         # Handle integer as timestamp
         return time.gmtime(value)
@@ -981,8 +982,11 @@ class Writer(object):
 
         for ex_kw in ('text', 'resolution', 'modification_time'):
             getattr(self, 'set_' + ex_kw)(kwargs.pop(ex_kw, None))
-
-        self.text.update(popdict(kwargs, _registered_kw))
+        # Keyword text support
+        kw_text = popdict(kwargs, _registered_kw)
+        if kw_text:
+            kw_text.update(self.text)
+            self.set_text(kw_text)
 
         if kwargs:
             warnings.warn("Unknown writer args: " + str(kwargs))
@@ -1024,6 +1028,10 @@ class Writer(object):
         if text is None:
             text = {}
         text.update(popdict(kwargs, _registered_kw))
+        if 'Creation Time' in text and\
+                not isinstance(text['Creation Time'], (basestring, bytes)):
+            text['Creation Time'] = datetime.datetime(
+                *(check_time(text['Creation Time'])[:6])).isoformat()
         self.text = text
 
     def set_modification_time(self, modification_time=True):
@@ -1295,7 +1303,7 @@ class Writer(object):
               float(2**self.rescale[1]-1) / float(2**self.rescale[0]-1)
 
             def extend(sl):
-                """Rescale fofore extend"""
+                """Rescale before extend"""
                 oldextend([int(round(factor * x)) for x in sl])
 
         # Build the first row, testing mostly to see if we need to
@@ -1553,7 +1561,7 @@ class Filter(BaseFilter):
         `line` specifies the current (unfiltered) scanline as a sequence
         of bytes;
         """
-        if isinstance(strategy, basestring):
+        if isinstance(strategy, (basestring, bytes)):
             strategy = {'name': str(strategy)}
         if isinstance(strategy, dict):
             cfg = strategy
