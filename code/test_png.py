@@ -617,6 +617,13 @@ class Test(unittest.TestCase):
         self.assertEqual(len(pixels), 2)
         self.assertEqual(len(pixels[0]), 16)
 
+    def testPaletteForcealpha(self):
+        """Test forcing alpha channel for palette"""
+        pngsuite.png['basn3p04'].seek(0)
+        r = png.Reader(pngsuite.png['basn3p04'])
+        r.preamble()
+        r.palette(alpha='force')
+
     def testInterlacedBuffer(self):
         """
         Test that reading an interlaced PNG yields each row as
