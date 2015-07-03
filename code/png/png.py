@@ -175,7 +175,9 @@ __all__ = ['png_signature', 'Image', 'Reader', 'Writer',
            'Error', 'FormatError', 'ChunkError',
            'Filter', 'register_extra_filter',
            'write_chunks', 'from_array', 'parse_mode',
-           'read_pam_header', 'read_pnm_header', 'write_pnm']
+           'read_pam_header', 'read_pnm_header', 'write_pnm',
+           'PERCEPTUAL', 'RELATIVE_COLORIMETRIC', 'SATURATION',
+           'ABSOLUTE_COLORIMETRIC']
 
 
 # The PNG signature.
@@ -194,6 +196,13 @@ _adam7 = ((0, 0, 8, 8),
 _registered_kw = ('Title', 'Author', 'Description', 'Copyright', 'Software',
                   'Disclaimer', 'Warning', 'Source', 'Comment',
                   'Creation Time')
+
+
+# rendering intent
+PERCEPTUAL = 0
+RELATIVE_COLORIMETRIC = 1
+SATURATION = 2
+ABSOLUTE_COLORIMETRIC = 3
 
 
 def group(s, n):
@@ -2285,6 +2294,9 @@ class Reader(object):
         self.trns = None
         # Stores sbit chunk if present.
         self.sbit = None
+        # If an sRGB chunk is present, sRGB and rendering intent are updated
+        self.sRGB = False
+        self.rendering_intent = None
 
     def _process_PLTE(self, data):
         # http://www.w3.org/TR/PNG/#11PLTE
@@ -2353,6 +2365,10 @@ class Reader(object):
         if (self.colormap and len(data) != 3 or
                 not self.colormap and len(data) != self.planes):
             raise FormatError("sBIT chunk has incorrect length.")
+
+    def _process_sRGB(self, data):
+        self.rendering_intent, = struct.unpack('B', data)
+        self.sRGB = True
 
     def _process_tEXt(self, data):
         # http://www.w3.org/TR/PNG/#11tEXt
