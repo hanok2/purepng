@@ -209,9 +209,11 @@ def _save(im, fp, filename):
             # "Patch" palette with transparency
             if isinstance(transparency, bytes):
                 transparency = bytearray(transparency)
-            else:  # not sure about this
+            else:
+                # integer is number of transparent colour
                 transparency = max(0, min(255, transparency))
                 transparency = bytearray((255,) * transparency)
+                transparency.append(0)
 
             # limit to actual palette size
             alpha_bytes = 2 ** bits
