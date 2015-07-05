@@ -2294,8 +2294,7 @@ class Reader(object):
         self.trns = None
         # Stores sbit chunk if present.
         self.sbit = None
-        # If an sRGB chunk is present, sRGB and rendering intent are updated
-        self.sRGB = False
+        # If an sRGB chunk is present, rendering intent is updated
         self.rendering_intent = None
 
     def _process_PLTE(self, data):
@@ -2368,14 +2367,12 @@ class Reader(object):
 
     def _process_sRGB(self, data):
         self.rendering_intent, = struct.unpack('B', data)
-        self.sRGB = True
-
-    CHRM_FORMAT = struct.Struct("!8L")
 
     def _process_cHRM(self, data):
-        if len(data) != self.CHRM_FORMAT.size:
+        CHRM_FORMAT = struct.Struct("!8L")
+        if len(data) != CHRM_FORMAT.size:
             raise FormatError("cHRM chunk has incorrect length.")
-        white_x, white_y, red_x, red_y, green_x, green_y, blue_x, blue_y  = \
+        white_x, white_y, red_x, red_y, green_x, green_y, blue_x, blue_y = \
             (value / 100000.0 for value in self.CHRM_FORMAT.unpack(data))
         self.white_point = white_x, white_y
         self.rgb_points = (red_x, red_y), (green_x, green_y), (blue_x, blue_y)
