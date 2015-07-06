@@ -989,7 +989,8 @@ class Writer(object):
         # Ditto for `colormap` and `maxval`.
         popdict(kwargs, ('planes', 'colormap', 'maxval'))
 
-        for ex_kw in ('text', 'resolution', 'modification_time'):
+        for ex_kw in ('text', 'resolution', 'modification_time',
+                      'rendering_intent', 'white_point', 'rgb_points'):
             getattr(self, 'set_' + ex_kw)(kwargs.pop(ex_kw, None))
         # Keyword text support
         kw_text = popdict(kwargs, _registered_kw)
@@ -1094,6 +1095,34 @@ class Writer(object):
                      resolution[0][1] * 100), 1)
         self.resolution = resolution
 
+    def set_rendering_intent(self, rendering_intent):
+        """Set rendering intent variant for sRGB chunk"""
+        if rendering_intent not in (None,
+                                    PERCEPTUAL,
+                                    RELATIVE_COLORIMETRIC,
+                                    SATURATION,
+                                    ABSOLUTE_COLORIMETRIC):
+            raise FormatError('Unknown redering intent')
+        self.rendering_intent = rendering_intent
+
+    def set_white_point(self, white_point, point2=None):
+        """Set white point part of cHRM chunk"""
+        if isinstance(white_point, float) and isinstance(point2, float):
+            white_point = (white_point, point2)
+        self.white_point = white_point
+
+    def set_rgb_points(self, rgb_points, *args):
+        """Set rgb points part of cHRM chunk"""
+        # separate tuples
+        if len(args) == 2:
+            rgb_points = (rgb_points, args[0], args[1])
+        # separate numbers
+        if len(args) == 5:
+            rgb_points = ((rgb_points, args[0]),
+                          (args[1], args[2]),
+                          (args[3], args[4]))
+        self.rgb_points = rgb_points
+
     def _write_palette(self, outfile):
         """
         Write``PLTE`` and if necessary a ``tRNS`` chunk to.
@@ -1114,6 +1143,47 @@ class Writer(object):
             # tRNS chunk is optional. Only needed if palette entries
             # have alpha.
             write_chunk(outfile, 'tRNS', bytearray_to_bytes(t))
+
+    def _write_srgb(self, outfile):
+        """
+        Write colour reference information: gamma, iccp etc.
+
+        This method should be called only from ``write_idat`` method
+        or chunk order will be ruined.
+        """
+        if self.rendering_intent is not None and self.icc_profile is not None:
+            raise FormatError("sRGB(via rendering_intent) and iCCP could not"
+                    "be present simultaneously")
+        # http://www.w3.org/TR/PNG/#11sRGB
+        if self.rendering_intent is not None:
+            write_chunk(outfile, 'sRGB',
+                        struct.pack("B", int(self.rendering_intent)))
+        # http://www.w3.org/TR/PNG/#11cHRM
+        if (self.white_point is not None and self.rgb_points is None) or\
+                (self.white_point is None and self.rgb_points is not None):
+            logging.warn("White and RGB points should be both specified to"
+                         " write cHRM chunk")
+            self.white_point = None
+            self.rgb_points = None
+        if (self.white_point is not None and self.rgb_points is not None):
+            data = (self.white_point[0], self.white_point[1],
+                    self.rgb_points[0][0], self.rgb_points[0][1],
+                    self.rgb_points[1][0], self.rgb_points[1][1],
+                    self.rgb_points[2][0], self.rgb_points[2][1],
+                    )
+            write_chunk(outfile, 'cHRM',
+                        struct.pack("!8L",
+                                    [int(round(it * 1e5)) for it in data]))
+        # http://www.w3.org/TR/PNG/#11gAMA
+        if self.gamma is not None:
+            write_chunk(outfile, 'gAMA',
+                        struct.pack("!L", int(round(self.gamma * 1e5))))
+        # http://www.w3.org/TR/PNG/#11iCCP
+        if self.icc_profile is not None:
+            write_chunk(outfile, 'iCCP',
+                        self.icc_profile_name + zerobyte +
+                        zerobyte +
+                        zlib.compress(self.icc_profile, self.compression))
 
     def write(self, outfile, rows):
         """
@@ -1180,17 +1250,7 @@ class Writer(object):
                                 self.bitdepth, self.color_type,
                                 0, 0, self.interlace))
         # See :chunk:order
-        # http://www.w3.org/TR/PNG/#11gAMA
-        if self.gamma is not None:
-            write_chunk(outfile, 'gAMA',
-                        struct.pack("!L", int(round(self.gamma*1e5))))
-        # See :chunk:order
-        # http://www.w3.org/TR/PNG/#11iCCP
-        if self.icc_profile is not None:
-            write_chunk(outfile, 'iCCP',
-                        self.icc_profile_name + zerobyte +
-                        zerobyte +
-                        zlib.compress(self.icc_profile, self.compression))
+        self._write_srgb(outfile)
         # See :chunk:order
         # http://www.w3.org/TR/PNG/#11sBIT
         if self.rescale:
@@ -1198,7 +1258,7 @@ class Writer(object):
                 struct.pack('%dB' % self.planes,
                             *[self.rescale[0]]*self.planes))
         # :chunk:order: Without a palette (PLTE chunk), ordering is
-        # relatively relaxed.  With one, gAMA chunk must precede PLTE
+        # relatively relaxed.  With one, gamma info must precede PLTE
         # chunk which must precede tRNS and bKGD.
         # See http://www.w3.org/TR/PNG/#5ChunkOrdering
         if self.palette:
@@ -2373,7 +2433,7 @@ class Reader(object):
         if len(data) != CHRM_FORMAT.size:
             raise FormatError("cHRM chunk has incorrect length.")
         white_x, white_y, red_x, red_y, green_x, green_y, blue_x, blue_y = \
-            (value / 100000.0 for value in self.CHRM_FORMAT.unpack(data))
+            (value / 100000.0 for value in CHRM_FORMAT.unpack(data))
         self.white_point = white_x, white_y
         self.rgb_points = (red_x, red_y), (green_x, green_y), (blue_x, blue_y)
 
@@ -2497,7 +2557,8 @@ class Reader(object):
             meta[attr] = getattr(self, attr)
         meta['size'] = (self.width, self.height)
         for attr in ('gamma', 'transparent', 'background', 'last_mod_time',
-                     'icc_profile', 'icc_profile_name', 'resolution', 'text'):
+                     'icc_profile', 'icc_profile_name', 'resolution', 'text',
+                     'rendering_intent', 'white_point', 'rgb_points'):
             a = getattr(self, attr, None)
             if a is not None:
                 meta[attr] = a
