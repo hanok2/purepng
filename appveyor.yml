@@ -55,7 +55,7 @@ install:
   # target Python version and architecture
   - "%CMD_IN_ENV% pip install nose"
   - "%CMD_IN_ENV% pip install coverage"
-  - "%CMD_IN_ENV% pip install coverall"
+  - "%CMD_IN_ENV% pip install coveralls"
 
   # Not a C# project, build stuff at the test step instead.
 build: false  
