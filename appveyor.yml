@@ -61,7 +61,7 @@ install:
   # compiled extensions and are not provided as pre-built wheel packages,
   # pip will build them from source using the MSVC compiler matching the
   # target Python version and architecture
-  - "%CMD_IN_ENV% pip install nose"
+  - "%CMD_IN_ENV% easy_install nose"
 #  - "%CMD_IN_ENV% pip install coverage"
 #  - "%CMD_IN_ENV% pip install coveralls"
 
@@ -70,7 +70,7 @@ build: false
 
 test_script:
   # run the project tests
-  - "%CMD_IN_ENV% nosetests code/test_png.py --with-coverage --cover-package=png"
+  - "%CMD_IN_ENV% nosetests code/test_png.py"
 
 #after_test:
 #  # If tests are successful, update coverage.
