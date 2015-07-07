@@ -29,6 +29,14 @@ environment:
       PYTHON_VERSION: "2.6.6"
       PYTHON_ARCH: "32"
 
+    - PYTHON: "C:\\Python254"
+      PYTHON_VERSION: "2.5.4"
+      PYTHON_ARCH: "32"
+
+    - PYTHON: "C:\\Python244"
+      PYTHON_VERSION: "2.4.4"
+      PYTHON_ARCH: "32"
+
 install:
   - ECHO "Filesystem root:"
   - ps: "ls \"C:/\""
