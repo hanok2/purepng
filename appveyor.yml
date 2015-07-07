@@ -55,7 +55,7 @@ install:
   # target Python version and architecture
   - "%CMD_IN_ENV% pip install nose"
   - "%CMD_IN_ENV% pip install coverage"
-#  - "%CMD_IN_ENV% pip install coverall"
+  - "%CMD_IN_ENV% pip install coverall"
 
   # Not a C# project, build stuff at the test step instead.
 build: false  
@@ -64,9 +64,10 @@ test_script:
   # run the project tests
   - "%CMD_IN_ENV% nosetests code/test_png.py --with-coverage --cover-package=png"
 
-#after_test:
-#  # If tests are successful, create a whl package for the project.
-#  - "%CMD_IN_ENV% python setup.py bdist_wheel bdist_wininst"
+after_test:
+  # If tests are successful, update coverage.
+  - "SET COVERALLS_REPO_TOKEN=tGSdG5Qcd2dcQa2oQN9GlJkL50wFZPv1j
+  - "%CMD_IN_ENV% coveralls"
 #  - ps: "ls dist"
 
 #artifacts:
