@@ -4,8 +4,9 @@
 
 $MINICONDA_URL = "http://repo.continuum.io/miniconda/"
 $BASE_URL = "https://www.python.org/ftp/python/"
-$GET_PIP_URL = "https://bootstrap.pypa.io/get-pip.py"
-$GET_PIP_PATH = "C:\get-pip.py"
+$GET_EZ4_URL = "https://bitbucket.org/pypa/setuptools/raw/bootstrap-py24/ez_setup.py"
+$GET_EZ_URL = "https://bootstrap.pypa.io/ez_setup.py"
+$GET_EZ_PATH = "C:\ez_setup.py"
 
 
 function DownloadPython ($python_version, $platform_suffix) {
@@ -79,17 +80,17 @@ function RunCommand ($command, $command_args) {
 }
 
 
-function InstallPip ($python_home) {
-    $pip_path = $python_home + "\Scripts\pip.exe"
+function InstallEz ($python_home) {
+    $ez_path = $python_home + "\Scripts\easy_install.exe"
     $python_path = $python_home + "\python.exe"
-    if (-not(Test-Path $pip_path)) {
-        Write-Host "Installing pip..."
+    if (-not(Test-Path $ez_path)) {
+        Write-Host "Installing easy_install..."
         $webclient = New-Object System.Net.WebClient
-        $webclient.DownloadFile($GET_PIP_URL, $GET_PIP_PATH)
-        Write-Host "Executing:" $python_path $GET_PIP_PATH
-        Start-Process -FilePath "$python_path" -ArgumentList "$GET_PIP_PATH" -Wait -Passthru
+        $webclient.DownloadFile($GET_EZ4_URL, $GET_EZ_PATH)
+        Write-Host "Executing:" $python_path $GET_EZ_PATH
+        Start-Process -FilePath "$python_path" -ArgumentList "$GET_EZ_PATH" -Wait -Passthru
     } else {
-        Write-Host "pip already installed."
+        Write-Host "easy_install already installed."
     }
 }
 
@@ -174,7 +175,7 @@ function InstallMinicondaPip ($python_home) {
 
 function main () {
     InstallPython $env:PYTHON_VERSION $env:PYTHON_ARCH $env:PYTHON
-    InstallPip $env:PYTHON
+    InstallEz $env:PYTHON
 }
 
 main
