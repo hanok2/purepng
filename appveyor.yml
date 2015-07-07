@@ -54,8 +54,8 @@ install:
   # pip will build them from source using the MSVC compiler matching the
   # target Python version and architecture
   - "%CMD_IN_ENV% pip install nose"
-  - "%CMD_IN_ENV% pip install coverage"
-  - "%CMD_IN_ENV% pip install coveralls"
+#  - "%CMD_IN_ENV% pip install coverage"
+#  - "%CMD_IN_ENV% pip install coveralls"
 
   # Not a C# project, build stuff at the test step instead.
 build: false  
@@ -64,10 +64,10 @@ test_script:
   # run the project tests
   - "%CMD_IN_ENV% nosetests code/test_png.py --with-coverage --cover-package=png"
 
-after_test:
-  # If tests are successful, update coverage.
-  - "SET COVERALLS_REPO_TOKEN=w8NKB65QmekU0thmQV1E5yEaFpYIyUAYP"
-  - "%CMD_IN_ENV% coveralls"
+#after_test:
+#  # If tests are successful, update coverage.
+#  - "SET COVERALLS_REPO_TOKEN=w8NKB65QmekU0thmQV1E5yEaFpYIyUAYP"
+#  - "%CMD_IN_ENV% coveralls"
 #  - ps: "ls dist"
 
 #artifacts:
