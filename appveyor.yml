@@ -63,7 +63,7 @@ build: false
 
 test_script:
   # run the project tests
-  - "%CMD_IN_ENV% nosetests code\test_png.py"
+  - "%CMD_IN_ENV% nosetests code/test_png.py"
 
 #after_test:
 #  # If tests are successful, update coverage.
