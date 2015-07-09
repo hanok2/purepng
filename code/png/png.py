@@ -1113,17 +1113,18 @@ class Writer(object):
 
     def set_rgb_points(self, rgb_points, *args):
         """Set rgb points part of cHRM chunk"""
+        if not args:
+            self.rgb_points = rgb_points
         # separate tuples
-        if len(args) == 2:
+        elif len(args) == 2:
             rgb_points = (rgb_points, args[0], args[1])
         # separate numbers
-        if len(args) == 5:
+        elif len(args) == 5:
             rgb_points = ((rgb_points, args[0]),
                           (args[1], args[2]),
                           (args[3], args[4]))
-        self.rgb_points = rgb_points
 
-    def _write_palette(self, outfile):
+    def __write_palette(self, outfile):
         """
         Write``PLTE`` and if necessary a ``tRNS`` chunk to.
 
@@ -1144,7 +1145,7 @@ class Writer(object):
             # have alpha.
             write_chunk(outfile, 'tRNS', bytearray_to_bytes(t))
 
-    def _write_srgb(self, outfile):
+    def __write_srgb(self, outfile):
         """
         Write colour reference information: gamma, iccp etc.
 
@@ -1184,6 +1185,33 @@ class Writer(object):
                         self.icc_profile_name + zerobyte +
                         zerobyte +
                         zlib.compress(self.icc_profile, self.compression))
+
+    def __write_text(self, outfile):
+        """
+        Write text information into file
+
+        This method should be called only from ``write_idat`` method
+        or chunk order will be ruined.
+        """
+        for k, v in self.text.items():
+            if not isinstance(v, bytes):
+                try:
+                    international = False
+                    v = v.encode('latin-1')
+                except UnicodeEncodeError:
+                    international = True
+                    v = v.encode('utf-8')
+            else:
+                international = False
+            if not isinstance(k, bytes):
+                k = strtobytes(k)
+            if international:
+                # No compress, language tag or translated keyword for now
+                write_chunk(outfile, 'iTXt', k + zerobyte +
+                            zerobyte + zerobyte +
+                            zerobyte + zerobyte + v)
+            else:
+                write_chunk(outfile, 'tEXt', k + zerobyte + v)
 
     def write(self, outfile, rows):
         """
@@ -1250,7 +1278,7 @@ class Writer(object):
                                 self.bitdepth, self.color_type,
                                 0, 0, self.interlace))
         # See :chunk:order
-        self._write_srgb(outfile)
+        self.__write_srgb(outfile)
         # See :chunk:order
         # http://www.w3.org/TR/PNG/#11sBIT
         if self.rescale:
@@ -1262,7 +1290,7 @@ class Writer(object):
         # chunk which must precede tRNS and bKGD.
         # See http://www.w3.org/TR/PNG/#5ChunkOrdering
         if self.palette:
-            self._write_palette(outfile)
+            self.__write_palette(outfile)
 
         # http://www.w3.org/TR/PNG/#11tRNS
         if self.transparent is not None:
@@ -1296,26 +1324,7 @@ class Writer(object):
                         struct.pack("!H5B", *(self.modification_time[:6])))
         # http://www.w3.org/TR/PNG/#11textinfo
         if self.text:
-            for k, v in self.text.items():
-                if not isinstance(v, bytes):
-                    try:
-                        international = False
-                        v = v.encode('latin-1')
-                    except UnicodeEncodeError:
-                        international = True
-                        v = v.encode('utf-8')
-                else:
-                    international = False
-                if not isinstance(k, bytes):
-                    k = strtobytes(k)
-                if international:
-                    # No compress, language tag or translated keyword for now
-                    write_chunk(outfile, 'iTXt', k + zerobyte +
-                                zerobyte + zerobyte +
-                                zerobyte + zerobyte + v)
-                else:
-                    write_chunk(outfile, 'tEXt', k + zerobyte + v)
-
+            self.__write_text(outfile)
         for idat in idat_sequence:
             write_chunk(outfile, 'IDAT', idat)
         # http://www.w3.org/TR/PNG/#11IEND
