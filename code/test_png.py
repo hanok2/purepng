@@ -605,6 +605,51 @@ class Test(unittest.TestCase):
         self.assertEqual(w.modification_time[:6],
                          r.last_mod_time[:6])
 
+    def testcHRM(self):
+        """Test reading chrome chunk for colour correction"""
+        pngsuite.png['Arc-cHRM-rgswap'].seek(0)
+        r = png.Reader(pngsuite.png['Arc-cHRM-rgswap'])
+        info = r.read()[3]
+        self.assertEqual(info['white_point'], (0.31270, 0.32900))
+        self.assertEqual(info['rgb_points'], ((0.30000, 0.60000),
+                                              (0.64000, 0.33000),
+                                              (0.15000, 0.06000)))
+
+    def testcHRMwrite(self):
+        """Test writing (and re-reading) chrome chunk for colour correction"""
+        pixels = [range(0, 8)] * 8
+        io = BytesIO()
+        w = png.Writer(size=(len(pixels[0]), len(pixels)))
+        w.set_white_point(0.31270, 0.32900)
+        w.set_rgb_points(0.30000, 0.60000, 0.64000, 0.33000, 0.15000, 0.06000)
+        w.write(io, pixels)
+        io.seek(0)
+        r = png.Reader(file=io)
+        info = r.read()[3]
+        self.assertEqual(info['white_point'], (0.31270, 0.32900))
+        self.assertEqual(info['rgb_points'], ((0.30000, 0.60000),
+                                              (0.64000, 0.33000),
+                                              (0.15000, 0.06000)))
+
+    def testsRGB(self):
+        """Test reading sRGB chunk for colour correction"""
+        pngsuite.png['ff99ff_sRGB'].seek(0)
+        r = png.Reader(pngsuite.png['ff99ff_sRGB'])
+        info = r.read()[3]
+        self.assertEqual(info['rendering_intent'], png.ABSOLUTE_COLORIMETRIC)
+
+    def testsRGBwrite(self):
+        """Test writing (and re-reading) sRGB chunk for colour correction"""
+        pixels = [range(0, 8)] * 8
+        io = BytesIO()
+        w = png.Writer(size=(len(pixels[0]), len(pixels)),
+                       rendering_intent=png.PERCEPTUAL)
+        w.write(io, pixels)
+        io.seek(0)
+        r = png.Reader(file=io)
+        info = r.read()[3]
+        self.assertEqual(info['rendering_intent'], png.PERCEPTUAL)
+
     def testPackedIter(self):
         """Test iterator for row when using write_packed."""
         w = png.Writer(16, 2, greyscale=True, alpha=False, bitdepth=1)
