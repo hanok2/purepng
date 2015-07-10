@@ -1117,10 +1117,10 @@ class Writer(object):
             self.rgb_points = rgb_points
         # separate tuples
         elif len(args) == 2:
-            rgb_points = (rgb_points, args[0], args[1])
+            self.rgb_points = (rgb_points, args[0], args[1])
         # separate numbers
         elif len(args) == 5:
-            rgb_points = ((rgb_points, args[0]),
+            self.rgb_points = ((rgb_points, args[0]),
                           (args[1], args[2]),
                           (args[3], args[4]))
 
@@ -1174,7 +1174,7 @@ class Writer(object):
                     )
             write_chunk(outfile, 'cHRM',
                         struct.pack("!8L",
-                                    [int(round(it * 1e5)) for it in data]))
+                                    *[int(round(it * 1e5)) for it in data]))
         # http://www.w3.org/TR/PNG/#11gAMA
         if self.gamma is not None:
             write_chunk(outfile, 'gAMA',
