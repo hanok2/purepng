@@ -820,9 +820,10 @@ class Test(unittest.TestCase):
         r = png.Reader(bytes=pngsuite.png['basi0g01'].read()[:13])
         try:
             r.asDirect()
-        except Exception as e:
-            self.assertTrue(isinstance(e, png.ChunkError))
-            self.assertIn('chunk length', str(e))
+        except Exception:
+            e = sys.exc_info()[1]
+            self.assertEqual(isinstance(e, png.FormatError), True)
+            self.assertEqual('chunk length' in str(e), True)
 
     def testChunkShort(self):
         """Chunk that is too short."""
@@ -830,9 +831,10 @@ class Test(unittest.TestCase):
         r = png.Reader(bytes=pngsuite.png['basi0g01'].read()[:21])
         try:
             r.asDirect()
-        except Exception as e:
-            self.assertTrue(isinstance(e, png.ChunkError))
-            self.assertIn('too short', str(e))
+        except Exception:
+            e = sys.exc_info()[1]
+            self.assertEqual(isinstance(e, png.ChunkError), True)
+            self.assertEqual('too short' in str(e), True)
 
     def testNoChecksum(self):
         """Chunk that's too small to contain a checksum."""
@@ -840,9 +842,10 @@ class Test(unittest.TestCase):
         r = png.Reader(bytes=pngsuite.png['basi0g01'].read()[:29])
         try:
             r.asDirect()
-        except Exception as e:
-            self.assertTrue(isinstance(e, png.ChunkError))
-            self.assertIn('checksum', str(e))
+        except Exception:
+            e = sys.exc_info()[1]
+            self.assertEqual(isinstance(e, png.ChunkError), True)
+            self.assertEqual('checksum' in str(e), True)
 
     def testFlat(self):
         """Test read_flat."""
