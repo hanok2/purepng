@@ -2074,7 +2074,7 @@ class Reader(object):
                   % (chunk_type, length))
             checksum = self.file.read(4)
             if len(checksum) != 4:
-                raise ValueError('Chunk %s too short for checksum.',
+                raise ChunkError('Chunk %s too short for checksum.',
                                  chunk_type)
             if seek and chunk_type != seek:
                 continue

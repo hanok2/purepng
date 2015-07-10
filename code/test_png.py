@@ -814,6 +814,36 @@ class Test(unittest.TestCase):
             return (chunk[0], data)
         self.assertRaises(png.FormatError, self.helperFormat, eachchunk)
 
+    def testChun(self):
+        """Chunk doesn't have length and type."""
+        pngsuite.png['basi0g01'].seek(0)
+        r = png.Reader(bytes=pngsuite.png['basi0g01'].read()[:13])
+        try:
+            r.asDirect()
+        except Exception as e:
+            self.assertIsInstance(e, png.FormatError)
+            self.assertIn('chunk length', str(e))
+
+    def testChunkShort(self):
+        """Chunk that is too short."""
+        pngsuite.png['basi0g01'].seek(0)
+        r = png.Reader(bytes=pngsuite.png['basi0g01'].read()[:21])
+        try:
+            r.asDirect()
+        except Exception as e:
+            self.assertIsInstance(e, png.ChunkError)
+            self.assertIn('too short', str(e))
+
+    def testNoChecksum(self):
+        """Chunk that's too small to contain a checksum."""
+        pngsuite.png['basi0g01'].seek(0)
+        r = png.Reader(bytes=pngsuite.png['basi0g01'].read()[:29])
+        try:
+            r.asDirect()
+        except Exception as e:
+            self.assertIsInstance(e, png.ChunkError)
+            self.assertIn('checksum', str(e))
+
     def testFlat(self):
         """Test read_flat."""
         try:
