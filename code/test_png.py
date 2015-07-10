@@ -821,7 +821,7 @@ class Test(unittest.TestCase):
         try:
             r.asDirect()
         except Exception as e:
-            self.assertIsInstance(e, png.FormatError)
+            self.assertTrue(isinstance(e, png.ChunkError))
             self.assertIn('chunk length', str(e))
 
     def testChunkShort(self):
@@ -831,7 +831,7 @@ class Test(unittest.TestCase):
         try:
             r.asDirect()
         except Exception as e:
-            self.assertIsInstance(e, png.ChunkError)
+            self.assertTrue(isinstance(e, png.ChunkError))
             self.assertIn('too short', str(e))
 
     def testNoChecksum(self):
@@ -841,7 +841,7 @@ class Test(unittest.TestCase):
         try:
             r.asDirect()
         except Exception as e:
-            self.assertIsInstance(e, png.ChunkError)
+            self.assertTrue(isinstance(e, png.ChunkError))
             self.assertIn('checksum', str(e))
 
     def testFlat(self):
