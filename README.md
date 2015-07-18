@@ -5,6 +5,7 @@ PurePNG provides Python code for encoding/decoding PNG files.  In
 particular png.py is a Python module written entirely in Python.
 
 [![Build Status](https://travis-ci.org/Scondo/purepng.svg?branch=master)](https://travis-ci.org/Scondo/purepng)
+[![Build status](https://ci.appveyor.com/api/projects/status/bohm7pnna5wef3b8/branch/master?svg=true)](https://ci.appveyor.com/project/Scondo/purepng/branch/master)
 [![Coverage Status](https://coveralls.io/repos/Scondo/purepng/badge.svg?branch=master)](https://coveralls.io/r/Scondo/purepng?branch=master)
 [![Code Health](https://landscape.io/github/Scondo/purepng/master/landscape.svg?style=flat)](https://landscape.io/github/Scondo/purepng/master)
 
@@ -62,8 +63,17 @@ but few things are changed:
 
 ## RELEASE NOTES
 (For issues see https://github.com/scondo/purepng/issues?state=open )
-### Working on 0.1.1 
+### PurePNG 0.1.1 New chunks
+* Raw iCCP read/write
+* cHRM and sRGB support
+* pHYs support
+* Text information (read tEXt and zTXt, write tEXt)
 * partitially iTXt
+* Bugfixes
+* Tests
+* Continious integration
+
+See https://github.com/Scondo/purepng/compare/0.1.0...Scondo:0.1.1
 
 ### PurePNG 0.1.0 Initial rework led to fork.
 
@@ -72,9 +82,6 @@ but few things are changed:
 * Module/package duality
 * Python 2/3 polyglot (and partitial Cython)
 * Using bytearray when possible.
-* Raw iCCP read/write
-* Text information (read tEXt and zTXt, write tEXt)
-* pHYs support
 * PIL plugin
 
 PyPNG release history:

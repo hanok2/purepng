@@ -57,7 +57,12 @@ automatically from the ``palette`` argument when a palette with alpha
 ``cHRM``
 ^^^^^^^^
 
-Ignored when reading.  Not generated.
+When reading a PNG image the ``cHRM`` chunk is converted to a tuples
+``white_point`` (2-tuple of floating point values) and ``rgb_points``
+(3-tuple of 2-tuple of floating point) in the ``info`` dictionary.
+When writing, ``white_point`` and ``rgb_points`` arguments to the
+:class:`png.Writer` class  or calling apropriate ``set_`` methods
+generate a ``cHRM`` chunk (only both, single will be ignored).
 
 ``gAMA``
 ^^^^^^^^
@@ -94,7 +99,11 @@ according to the ``bitdepth`` argument specified.  Values other than 1,
 ``sRGB``
 ^^^^^^^^
 
-Ignored when reading.  Not generated.
+When reading a PNG image the ``sRGB`` chunk is read to an integer value;
+this value is returned in the ``info`` dictionary:
+``info['rendering_intent']`` and can be compared to values like 
+``png.PERCEPTUAL``.  When writing, the ``rendering_intent`` argument to the
+:class:`png.Writer` class will generate a ``sRGB`` chunk.
 
 ``tEXt``
 ^^^^^^^^
@@ -146,8 +155,8 @@ reading result, but also possible some usability modificatuion:
 * if both resolutions are same it could be written as single number instead of tuple: (<pixel_per_unit_x>, <unit_is_meter>) 
 * all three  parameters could be written in row: (<pixel_per_unit_x>, <pixel_per_unit_y>, <unit_is_meter>)
 * instead of <unit_is_meter> bool it's possible to use some unit specification:
-1. omit this part if no unit specified ((<pixel_per_unit_x>, <pixel_per_unit_y>), )
-2. use text name of unit (300, 'i') 'i', 'cm' and 'm' supported for now.
+   1. omit this part if no unit specified ((<pixel_per_unit_x>, <pixel_per_unit_y>), )
+   2. use text name of unit (300, 'i') 'i', 'cm' and 'm' supported for now.
 
 ``sPLT``
 ^^^^^^^^
@@ -165,7 +174,8 @@ as file writing time.
 
 PNG Extensions Chunks
 ---------------------
-ftp://ftp.simplesystems.org/pub/png/documents/pngextensions.html
+See ftp://ftp.simplesystems.org/pub/png/documents/pngextensions.html
+
 ``oFFs ``
 ^^^^^^^^^
 

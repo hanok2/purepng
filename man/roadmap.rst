@@ -14,25 +14,21 @@ David Jones works carefully on this.
 
 0.1 ==> 0.2
 -----------
-Done
-^^^^
-* Reworked Cython concept.
-* Add optional filtering on save.
-* Module/package duality
-* Python 2/3 polyglot (and partitial Cython)
-* Using bytearray when possible.
-* Rows in boxed flat row now may be any buffer-compatible, not only array.
-* Python 2.2 support removed.
-* PIL plugin
-* Raw iCCP read/write
-* Text information (read tEXt and zTXt, write tEXt, partitially iTXt )
-* pHYs support
+0.1.1 is feature freeze and 0.2 is about to release.
+Just wait some time to be sure about bugs.
+Examples and tests are subject to change.
 
+0.3 ==> 0.4
+-----------
+* Provide optimisation functions like 'try to pallete' or 'try to greyscale'
+* Separate pnm support to module within package
+* Rework iccp module to become part of package
+* Better text support
+* Enhance PIL plugin, support 'raw' reading with palette handled by PIL
 
 Future
 ------
 * Cython-accelerated scaling
 * Support more chunks at least for direct reading|embeding.
-* Provide optimisation functions like 'try to pallete' or 'try to greyscale'
 * Integrate most tools (incl. picture formats) into package
 * Other Cython acceleration when possible
