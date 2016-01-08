@@ -6,6 +6,8 @@ python:
   - "3.2"
   - "3.3"
   - "3.4"
+  - "3.5"
+  - "nightly"  
   - "pypy"
   - "pypy3"
 
@@ -16,6 +18,10 @@ env:
 matrix:
   allow_failures:
     # Cython build may fail in PyPy, that's why pure mode so important
+    - python: "nightly"
+      env: USE_CYTHON=yes
+    - python: "nightly"
+      env: USE_CYTHON=no
     - python: "pypy"
       env: USE_CYTHON=yes
     - python: "pypy3"
