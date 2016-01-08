@@ -13,6 +13,7 @@
 # http://docs.python.org/release/2.4.4/lib/module-sys.html
 import sys
 import os
+import logging
 from os.path import dirname, join
 
 try:
@@ -26,6 +27,30 @@ try:
     from Cython.Build import cythonize
 except ImportError:
     cythonize = False  # just to be sure
+
+from distutils.command.build_ext import build_ext
+from distutils.errors import DistutilsError, CCompilerError, CompileError
+
+
+class build_ext_opt(build_ext):
+    """
+    This is a version of the build_ext command that allow to fail build.
+
+    As there is no reqired extension(only acceleration) with failed
+    build_ext package still be usable.
+    With `force` option this behavior disabled.
+    """
+
+    command_name = 'build_ext'
+
+    def build_extension(self, ext):
+        try:
+            build_ext.build_extension(self, ext)
+        except (CCompilerError, DistutilsError, CompileError) as e:
+            if self.force:
+                raise
+            logging.warn('building optional extension "%s" failed: %s' %
+                     (ext.name, e))
 
 
 def get_version():
@@ -77,6 +102,8 @@ if __name__ == '__main__':
         cythonize = False
         sys.argv.remove('--no-cython')
     # Crude but simple check to disable cython when it's not needed
+    if '--help' in sys.argv[1:]:
+        cythonize = False
     commands = [it for it in sys.argv[1:] if not it.startswith('-')]
     no_c_need = ('check', 'upload', 'register', 'upload_docs', 'build_sphinx',
                  'saveopts', 'setopt', 'clean', 'develop', 'install_egg_info',
