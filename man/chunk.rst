@@ -176,7 +176,7 @@ PNG Extensions Chunks
 ---------------------
 See ftp://ftp.simplesystems.org/pub/png/documents/pngextensions.html
 
-``oFFs ``
+``oFFs``
 ^^^^^^^^^
 
 Ignored when reading.  Not generated.

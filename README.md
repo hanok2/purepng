@@ -26,7 +26,7 @@ After that, try "import png" then "help(png)".
 ## INSTALLATION
 
 PurePNG requires Python version 2.3 (and that's all), or any compatible
-higher version(incl. Python 3).  It works best on Python 2.4 and above. 
+higher version(incl. Python 3).  It works best on Python 2.6 and above. 
 
 PurePNG comes with a setup.py script to use with distutils.  After
 unpacking the distribution, cd into the directory and execute the

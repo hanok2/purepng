@@ -50,7 +50,7 @@ For help, type ``import png; help(png)`` in your python interpreter.
 A good place to start is the :class:`Reader` and :class:`Writer`
 classes.
 
-Requires Python 2.3.  Best with Python 2.4 and higher.  Installation is
+Requires Python 2.3.  Best with Python 2.6 and higher.  Installation is
 trivial, but see the ``README.txt`` file (with the source distribution)
 for details.
 

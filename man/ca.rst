@@ -49,7 +49,7 @@ processing of files with any bit depth from 1 to 16 (for example a
 10-bit scanner may use the ``sBIT`` chunk to declare that the samples in
 a 16-bit PNG file are rescaled 10-bit samples; in this case, PurePNG
 delivers 10-bit samples).  Netpbm handle's the ``sBIT`` chunk in a
-similar way, but other toolsets may not (e.g. PIL with native plugin).
+similar way, but other toolsets may not (e.g. PIL).
 
 ``libpng`` is made by the PNG gods, so if want to get at all that
 goodness, then you may want to interface directly to libpng via

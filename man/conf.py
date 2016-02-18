@@ -24,8 +24,8 @@ intersphinx_mapping = {'python': ('https://docs.python.org/2.7', None)}
 templates_path = []
 source_suffix = '.rst'
 master_doc = 'index'
-project = u'PurePNG'
-copyright = u'2014, ' + conf['author']
+project = 'PurePNG'
+copyright = '2016, ' + conf['author']
 release = conf['version']
 version = release[:release.rfind('.')]
 language = 'en'
@@ -53,7 +53,7 @@ latex_paper_size = 'a4'
 #Grouping the document tree into LaTeX files. List of tuples
 #(source start file, target name, title, author, document class[howto/manual]).
 latex_documents = [
-  ('index', 'PurePNG.tex', ur'PurePNG Documentation',
+  ('index', 'PurePNG.tex', 'PurePNG Documentation',
    conf['author'], 'manual'),
 ]
 
