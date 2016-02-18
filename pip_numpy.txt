@@ -1,4 +1,4 @@
 numpy ; platform_python_implementation != 'PyPy'
-git+https://bitbucket.org/pypy/numpy.git ; platform_python_implementation == 'PyPy' and python_version < '3.0'
+git+https://bitbucket.org/pypy/numpy.git@pypy-4.0.1 ; platform_python_implementation == 'PyPy' and python_version < '3.0'
 #numpy is now broken for pypy3
 #git+https://bitbucket.org/pypy/numpy.git ; platform_python_implementation == 'PyPy' and python_version > '3.0' 
