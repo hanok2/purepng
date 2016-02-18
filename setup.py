@@ -53,6 +53,36 @@ class build_ext_opt(build_ext):
                      (ext.name, e))
 
 
+try:
+    def do_unimport(folder=''):
+        """Do extraction of filters etc. into target folder"""
+        src = open(join(folder, 'png.py'))
+        try:
+            os.remove(join(folder, 'pngfilters.py'))
+        except:
+            pass
+        new = open(join(folder, 'pngfilters.py'), 'w')
+
+        # Fixed part
+        # Cython directives
+        new.write('#cython: boundscheck=False\n')
+        new.write('#cython: wraparound=False\n')
+
+        go = False
+        for line in src:
+            if line.startswith('class') and\
+                    (line.startswith('class BaseFilter')):
+                go = True
+            elif not (line.startswith('   ') or line.strip() == ''):
+                go = False
+            if go:
+                new.write(line)
+        new.close()
+        return join(folder, 'pngfilters.py')
+except BaseException:  # Whatever happens we could work without unimport
+    cythonize = False  # at cost of disabled cythonize
+
+
 def get_version():
     for line in open(join(dirname(__file__), 'code', 'png', 'png.py')):
         if '__version__' in line:
@@ -113,7 +143,6 @@ if __name__ == '__main__':
 
     pre_cythonized = join(conf['package_dir']['png'], 'pngfilters.c')
     if cythonize:
-        from unimport import do_unimport
         cyth_ext = do_unimport(conf['package_dir']['png'])
         conf['ext_modules'] = cythonize(cyth_ext)
         os.remove(cyth_ext)
