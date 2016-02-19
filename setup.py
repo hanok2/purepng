@@ -10,7 +10,6 @@
 # in the man directory, so that this file forms a single source for
 # metadata.
 
-# http://docs.python.org/release/2.4.4/lib/module-sys.html
 import sys
 import os
 import logging
@@ -96,9 +95,17 @@ conf = dict(
     description='Pure Python PNG image encoder/decoder',
     long_description="""
 PurePNG allows PNG image files to be read and written using pure Python.
+PurePNG can read and write all PNG formats.
+PNG supports a generous variety of image formats: RGB or greyscale, with or
+without an alpha channel; and a choice of bit depths from 1, 2 or 4
+(as long as you want greyscale or a pallete),
+8, and 16 (but 16 bits is not allowed for palettes).
+A pixel can vary in size from 1 to 64 bits: 1/2/4/8/16/24/32/48/64.
+In addition a PNG file can be interlaced or not.
+An interlaced file allows an incrementally refined display of images being
+downloaded over slow links (yet it`s not implemented in PurePNG for now).
 
-It's available from github.com
-https://github.com/scondo/purepng
+PurePNG is written in pure Python(that`s why it`s called Pure).
 """,
     author='Pavel Zlatovratskii',
     author_email='scondo@mail.ru',
@@ -124,8 +131,9 @@ https://github.com/scondo/purepng
       'License :: OSI Approved :: MIT License',
       'Operating System :: OS Independent',
       'Development Status :: 4 - Beta',
-      ],
-    )
+    ],
+    license='MIT License'
+)
 
 if __name__ == '__main__':
     if '--no-cython' in sys.argv:
