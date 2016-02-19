@@ -45,7 +45,8 @@ class build_ext_opt(build_ext):
     def build_extension(self, ext):
         try:
             build_ext.build_extension(self, ext)
-        except (CCompilerError, DistutilsError, CompileError) as e:
+        except (CCompilerError, DistutilsError, CompileError):
+            e = sys.exc_info()[1]
             if self.force:
                 raise
             logging.warn('building optional extension "%s" failed: %s' %
