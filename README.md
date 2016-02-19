@@ -63,6 +63,9 @@ but few things are changed:
 
 ## RELEASE NOTES
 (For issues see https://github.com/scondo/purepng/issues?state=open )
+### PurePNG 0.1.2
+Fixing installation problems cause by cython/unimport
+
 ### PurePNG 0.1.1 New chunks
 * Raw iCCP read/write
 * cHRM and sRGB support

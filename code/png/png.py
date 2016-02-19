@@ -170,7 +170,7 @@ except ImportError:
     # On Python 3 there is no imap, but map works like imap instead
     pass
 
-__version__ = "0.1.1"
+__version__ = "0.1.2"
 __all__ = ['png_signature', 'Image', 'Reader', 'Writer',
            'Error', 'FormatError', 'ChunkError',
            'Filter', 'register_extra_filter',
