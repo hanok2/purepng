@@ -4,4 +4,5 @@
 graft man
 include README.md
 include LICENCE
+global-include *.pyx *.pxd
 global-exclude *.pyc  *$py.class *.DS_Store *.pyd *.so
