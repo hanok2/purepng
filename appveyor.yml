@@ -4,7 +4,6 @@ environment:
     # /E:ON and /V:ON options are not enabled in the batch script intepreter
     # See: http://stackoverflow.com/a/13751649/163740
     CMD_IN_ENV: "cmd /E:ON /V:ON /C .\\appveyor\\run_with_env.cmd"
-    PY_MINOR_CMD: 'python -c "import sys; print sys.version_info.minor"'
 
   matrix:
 
@@ -14,6 +13,7 @@ environment:
     - PYTHON: "C:\\Python27-x64"
       PYTHON_VERSION: "2.7.x" # currently 2.7.9
       PYTHON_ARCH: "64"
+      py_minor: "7"
 
     # Also test a Python version not pre-installed
     # See: https://github.com/ogrisel/python-appveyor-demo/issues/10
@@ -21,14 +21,17 @@ environment:
     - PYTHON: "C:\\Python266"
       PYTHON_VERSION: "2.6.6"
       PYTHON_ARCH: "32"
+      py_minor: "6"
 
     - PYTHON: "C:\\Python254"
       PYTHON_VERSION: "2.5.4"
       PYTHON_ARCH: "32"
+      py_minor: "5"
 
     - PYTHON: "C:\\Python244"
       PYTHON_VERSION: "2.4.4"
       PYTHON_ARCH: "32"
+      py_minor: "4"
 
 install:
   #- ECHO "Filesystem root:"
@@ -45,7 +48,6 @@ install:
   # done from inside the powershell script as it would require to restart
   # the parent CMD process).
   - "SET PATH=%PYTHON%;%PYTHON%\\Scripts;%PATH%"
-  - "for /f %a in ('%PY_MINOR_cmd%') DO set py_minor=%a"
   # Check that we have the expected version and architecture for Python
   - "python -c \"import sys; print(sys.version)"
   - "python -c \"import struct; print(struct.calcsize('P') * 8)\""
@@ -63,10 +65,12 @@ build: false
 
 test_script:
   # run the project tests
-  - "%CMD_IN_ENV% nosetests code/test_png.py"
+  - "if %py_minor% GEQ 6 %CMD_IN_ENV% nosetests code/test_png.py --with-coverage --cover-package=png"
+  - "if %py_minor% LSS 6 %CMD_IN_ENV% nosetests code/test_png.py --with-coverage --cover-package=png"
 
 after_test:
   # If tests are successful, update coverage.
+  - "SET CI_BRANCH=%APPVEYOR_REPO_BRANCH%"
   - "SET COVERALLS_PARALLEL=true"
   - "SET COVERALLS_REPO_TOKEN=w8NKB65QmekU0thmQV1E5yEaFpYIyUAYP"
   - "if %py_minor% GEQ 6 %CMD_IN_ENV% coveralls"
