@@ -11,8 +11,11 @@ python:
   - "pypy3"
 
 env:
-  - USE_CYTHON=yes
-  - USE_CYTHON=no
+  global:
+    - COVERALLS_PARALLEL=true
+  matrix:
+    - USE_CYTHON=yes
+    - USE_CYTHON=no
 
 matrix:
   allow_failures:
@@ -43,3 +46,6 @@ script:
 
 after_success:
   coveralls
+ 
+notifications:
+  webhooks: https://coveralls.io/webhook?repo_token=w8NKB65QmekU0thmQV1E5yEaFpYIyUAYP
