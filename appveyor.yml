@@ -55,8 +55,8 @@ install:
   # target Python version and architecture
   - "%CMD_IN_ENV% easy_install nose"
 #  - "%CMD_IN_ENV% easy_install PIL"
-  - "%CMD_IN_ENV% pip install coverage"
-  - "%CMD_IN_ENV% pip install coveralls"
+  - "%CMD_IN_ENV% easy_install coverage"
+  - "%CMD_IN_ENV% easy_install coveralls"
 
   # Not a C# project, build stuff at the test step instead.
 build: false  
@@ -70,10 +70,8 @@ after_test:
   # If tests are successful, update coverage.
   - "SET COVERALLS_REPO_TOKEN=w8NKB65QmekU0thmQV1E5yEaFpYIyUAYP"
   - "%CMD_IN_ENV% coveralls"
-  - ps: "ls dist"
   
 notifications:
-
   - provider: Webhook
     url: https://coveralls.io/webhook?repo_token=w8NKB65QmekU0thmQV1E5yEaFpYIyUAYP
     method: GET
