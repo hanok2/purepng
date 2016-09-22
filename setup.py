@@ -27,11 +27,12 @@ try:
 except ImportError:
     cythonize = False  # just to be sure
 
-from distutils.command.build_ext import build_ext
+from distutils.command.build_ext import build_ext as build_ext_orig
 from distutils.errors import DistutilsError, CCompilerError, CompileError
+import distutils
 
 
-class build_ext_opt(build_ext):
+class build_ext_opt(build_ext_orig):
     """
     This is a version of the build_ext command that allow to fail build.
 
@@ -44,13 +45,17 @@ class build_ext_opt(build_ext):
 
     def build_extension(self, ext):
         try:
-            build_ext.build_extension(self, ext)
-        except (CCompilerError, DistutilsError, CompileError):
+            build_ext_orig.build_extension(self, ext)
+        except (CCompilerError, DistutilsError, CompileError,
+                Exception):
             e = sys.exc_info()[1]
             if self.force:
                 raise
             logging.warn('building optional extension "%s" failed: %s' %
                      (ext.name, e))
+
+
+distutils.command.build_ext.build_ext = build_ext_opt
 
 
 try:
