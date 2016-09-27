@@ -75,12 +75,12 @@ after_test:
   - "SET CI_BRANCH=%APPVEYOR_REPO_BRANCH%"
   - "SET COVERALLS_PARALLEL=true"
   - "SET COVERALLS_REPO_TOKEN=w8NKB65QmekU0thmQV1E5yEaFpYIyUAYP"
-  - "if %py_minor% GEQ 6 %CMD_IN_ENV% coveralls"
+  #- "if %py_minor% GEQ 6 %CMD_IN_ENV% coveralls"
   
-notifications:
-  - provider: Webhook
-    url: https://coveralls.io/webhook?repo_token=w8NKB65QmekU0thmQV1E5yEaFpYIyUAYP
-    method: GET
+#notifications:
+#  - provider: Webhook
+#    url: https://coveralls.io/webhook?repo_token=w8NKB65QmekU0thmQV1E5yEaFpYIyUAYP
+#    method: GET
 #artifacts:
 #  # Archive the generated wheel package in the ci.appveyor.com build report.
 #  - path: dist\*
