@@ -57,16 +57,18 @@ install:
   # target Python version and architecture
   - "%CMD_IN_ENV% easy_install nose"
 #  - "%CMD_IN_ENV% easy_install PIL"
-  - "if %py_minor% GEQ 6 %CMD_IN_ENV% easy_install coverage"
-  - "if %py_minor% GEQ 6 %CMD_IN_ENV% easy_install coveralls"
+# Disabled due to https://github.com/lemurheavy/coveralls-public/issues/613
+#  - "if %py_minor% GEQ 6 %CMD_IN_ENV% easy_install coverage"
+#  - "if %py_minor% GEQ 6 %CMD_IN_ENV% easy_install coveralls"
 
   # Not a C# project, build stuff at the test step instead.
 build: false  
 
 test_script:
   # run the project tests
-  - "if %py_minor% GEQ 6 %CMD_IN_ENV% nosetests code/test_png.py --with-coverage --cover-package=png"
-  - "if %py_minor% LSS 6 %CMD_IN_ENV% nosetests code/test_png.py --with-coverage --cover-package=png"
+  - "%CMD_IN_ENV% nosetests code/test_png.py"
+  #- "if %py_minor% GEQ 6 %CMD_IN_ENV% nosetests code/test_png.py --with-coverage --cover-package=png"
+  #- "if %py_minor% LSS 6 %CMD_IN_ENV% nosetests code/test_png.py"
 
 after_test:
   # If tests are successful, update coverage.
