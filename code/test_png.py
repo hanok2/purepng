@@ -384,6 +384,25 @@ class Test(unittest.TestCase):
         self.assertEqual(y, 32)
         self.assertEqual('palette' in info, True)
 
+    def testBkdgPal(self):
+        """Test background in palleted image"""
+        pngsuite.tbyn3p08.seek(0)
+        r = png.Reader(pngsuite.tbyn3p08)
+        info = r.read()[3]
+        # TODO: in fact it would be much better if 'background' will return
+        # usual three-tuple
+        pal = info['palette']
+        bkgd_idx = info['background'][0]
+        # Opague yellow
+        self.assertEqual(pal[bkgd_idx], (255, 255, 0, 255))
+
+    def testBkdg(self):
+        pngsuite.bgwn6a08.seek(0)
+        r = png.Reader(pngsuite.bgwn6a08)
+        info = r.read()[3]
+        # white background
+        self.assertEqual(info['background'], (255, 255, 255))
+
     def testPalWrite(self):
         """Test metadata for paletted PNG can be passed from one PNG
         to another."""
@@ -399,6 +418,22 @@ class Test(unittest.TestCase):
         _, _, _, again_info = r.read()
         # Same palette
         self.assertEqual(again_info['palette'], info['palette'])
+
+    def testBkgdWrite(self):
+        """Test write(change) simple background"""
+        pngsuite.bgwn6a08.seek(0)
+        r = png.Reader(pngsuite.bgwn6a08)
+        _, _, pixels, info = r.read()
+        info['background'] = (0, 0, 255)
+        w = png.Writer(**info)
+        o = BytesIO()
+        w.write(o, pixels)
+        o.flush()
+        o.seek(0)
+        r = png.Reader(file=o)
+        info = r.read()[3]
+        # blue background
+        self.assertEqual(info['background'], (0, 0, 255))
 
     def testPalExpand(self):
         """Test that bitdepth can be used to fiddle with pallete image."""
