@@ -30,13 +30,13 @@ cdef class BaseFilter:
 	@cython.locals(i=cython.int, x=cython.uchar, b=cython.uchar, previous=buf_arr)
 	cdef void __undo_filter_up(self, buf_arr scanline)
 
-	@cython.locals(i=cython.int, x=cython.uchar, b=cython.uchar)
+	@cython.locals(i=cython.int, x=cython.uchar, b=cython.uchar, previous=buf_arr)
 	cdef void __do_filter_up(self, unsigned char[::1] scanline, unsigned char[::1] result)
 
-	@cython.locals(ai = cython.int, i=cython.int, x=cython.uchar, a=cython.uchar, b=cython.uchar, previous=buf_arr)                         
+	@cython.locals(ai = cython.int, i=cython.int, x=cython.uchar, a=cython.uchar, b=cython.uchar, previous=buf_arr)
 	cdef void __undo_filter_average(self, buf_arr scanline)
 
-	@cython.locals(ai = cython.int, i=cython.int, x=cython.uchar, a=cython.uchar, b=cython.uchar)                         
+	@cython.locals(ai = cython.int, i=cython.int, x=cython.uchar, a=cython.uchar, b=cython.uchar, previous=buf_arr)
 	cdef void __do_filter_average(self, unsigned char[::1] scanline, unsigned char[::1] result)
 
 	@cython.locals(ai = cython.int, i=cython.int, x=cython.uchar, a=cython.uchar, b=cython.uchar, c=cython.uchar, pa=cython.uchar, pb=cython.uchar, pc=cython.int, pr=cython.uchar, previous=buf_arr)
