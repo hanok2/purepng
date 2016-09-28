@@ -33,7 +33,7 @@ matrix:
 install:
   - pip install pillow
   - pip install -r pip_numpy.txt
-  - if [[ $TRAVIS_PYTHON_VERSION == '3.2' ]]; then pip install coverage<4; fi
+  - if [[ $TRAVIS_PYTHON_VERSION == '3.2' ]]; then pip install "coverage<4"; fi
   - pip install coverage
   - pip install coveralls
 
