@@ -4,7 +4,7 @@
 
 $MINICONDA_URL = "http://repo.continuum.io/miniconda/"
 $BASE_URL = "https://www.python.org/ftp/python/"
-$GET_EZ4_URL = "https://raw.githubusercontent.com/pypa/setuptools/bootstrap-py24/ez_setup.py"
+$GET_EZ4_URL = "https://raw.githubusercontent.com/pypa/setuptools/archive/bootstrap-py24/ez_setup.py"
 $GET_EZ_URL = "https://bootstrap.pypa.io/ez_setup.py"
 $GET_EZ_PATH = "C:\ez_setup.py"
 
