@@ -1076,8 +1076,7 @@ class Writer(object):
             return
         # All in row
         if len(resolution) == 3:
-            self.resolution = ((resolution[0], resolution[1]), resolution[2])
-            return
+            resolution = ((resolution[0], resolution[1]), resolution[2])
         # Ensure length and convert all false to 0 (no unit)
         if len(resolution) == 1 or not resolution[1]:
             resolution = (resolution[0], 0)

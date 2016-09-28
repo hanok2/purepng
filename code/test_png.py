@@ -507,6 +507,18 @@ class Test(unittest.TestCase):
         self.assertEqual(float(x) / info_r['resolution'][0][0], 0.032)
         self.assertEqual(float(y) / info_r['resolution'][0][1], 0.032)
 
+        # Another way of encoding
+        pngsuite.png['basn0g16'].seek(0)
+        r = png.Reader(pngsuite.png['basn0g16'])
+        x, y, pixels, info = r.read()
+        info['resolution'] = (1000, 1000, 'm')  # 10 pixel per cm
+        test_phy = topngbytes('test_phy.png', pixels, x, y, **info)
+        x, y, pixels, info_r = png.Reader(bytes=test_phy).read()
+        self.assertEqual('resolution' in info_r, True)
+        self.assertEqual(info_r['resolution'][1], 1)  # unit is meter
+        self.assertEqual(float(x) / info_r['resolution'][0][0], 0.032)
+        self.assertEqual(float(y) / info_r['resolution'][0][1], 0.032)
+
     def testWinfo(self):
         """
         Test the dictionary returned by a `read` method can be used
