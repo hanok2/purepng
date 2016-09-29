@@ -12,11 +12,15 @@ PyPNG
 PyPNG with it's 0.0.* version could be treated as previous stable version of PurePNG.
 David Jones works carefully on this.
 
-0.1 ==> 0.2
------------
-0.1.1 is feature freeze and 0.2 is about to release.
-Just wait some time to be sure about bugs.
-Examples and tests are subject to change.
+0.2
+---
+* Reworked Cython concept.
+* Add optional filtering on save.
+* Module/package duality
+* Python 2/3 polyglot (and partitial Cython)
+* Using bytearray when possible.
+* PIL plugin
+* More chunks: text, resolution, colour intent
 
 0.3 ==> 0.4
 -----------

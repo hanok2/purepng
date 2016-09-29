@@ -63,6 +63,10 @@ but few things are changed:
 
 ## RELEASE NOTES
 (For issues see https://github.com/scondo/purepng/issues?state=open )
+### PurePNG 0.2.0
+Kind of stable release
+Minor bugfixes(mostly installation)
+
 ### PurePNG 0.1.2
 Fixing installation problems cause by cython/unimport
 
