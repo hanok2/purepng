@@ -236,7 +236,8 @@ class WriteTest(BaseTest):
         # Save via PurePNG
         reload(purepng)
         pure_file = BytesIO()
-        pure_file.name = type(self).__name__
+        # PIL save new named file instead of write to BytesIO
+        # pure_file.name = type(self).__name__
         im_orig.save(pure_file, 'PNG')
         # Load again, plugin unimportant after read test
         pure_file.seek(0)

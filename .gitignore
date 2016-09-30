@@ -15,3 +15,4 @@ code/png/pngfilters.html
 # Compiled filters
 code/png/pngfilters.pyd
 code/png/*pngfilters*.so
+/purepng.egg-info

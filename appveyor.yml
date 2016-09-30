@@ -66,7 +66,7 @@ build: false
 
 test_script:
   # run the project tests
-  - "%CMD_IN_ENV% nosetests code/test_png.py"
+  - "%CMD_IN_ENV% nosetests test_png.py"
   #- "if %py_minor% GEQ 6 %CMD_IN_ENV% nosetests code/test_png.py --with-coverage --cover-package=png"
   #- "if %py_minor% LSS 6 %CMD_IN_ENV% nosetests code/test_png.py"
 

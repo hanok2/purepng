@@ -89,7 +89,7 @@ except BaseException:  # Whatever happens we could work without unimport
 
 
 def get_version():
-    for line in open(join(dirname(__file__), 'code', 'png', 'png.py')):
+    for line in open(join(dirname(__file__), 'png', 'png.py')):
         if '__version__' in line:
             version = line.split('"')[1]
             break
@@ -116,7 +116,7 @@ PurePNG is written in pure Python(that`s why it`s called Pure).
     author='Pavel Zlatovratskii',
     author_email='scondo@mail.ru',
     url='https://github.com/scondo/purepng',
-    package_dir={'png': join('code', 'png')},
+    package_dir={'png': 'png'},
     packages=['png'],
     classifiers=[
       'Topic :: Multimedia :: Graphics',
@@ -131,6 +131,7 @@ PurePNG is written in pure Python(that`s why it`s called Pure).
       'Programming Language :: Python :: 3.2',
       'Programming Language :: Python :: 3.3',
       'Programming Language :: Python :: 3.4',
+      'Programming Language :: Python :: 3.5',
       'Programming Language :: Python :: Implementation :: CPython',
       'Programming Language :: Python :: Implementation :: Jython',
       'Programming Language :: Python :: Implementation :: PyPy',

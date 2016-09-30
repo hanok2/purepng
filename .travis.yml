@@ -44,7 +44,7 @@ before_script:
 script:
   # Will be built if cython installed
   - python setup.py build_ext --inplace --force
-  - nosetests code --with-coverage --cover-package=png
+  - nosetests --with-coverage --cover-package=png
 
 after_success:
   coveralls

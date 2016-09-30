@@ -27,7 +27,7 @@
 from PIL import Image, ImageFile
 import array
 import png
-__version__ = "0.1.0"
+__version__ = "0.3.0"
 
 
 try:
