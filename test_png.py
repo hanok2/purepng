@@ -47,6 +47,7 @@ except ImportError:
     from array import array
 
 import png
+import png.pnm2png
 import pngsuite
 import sys
 
@@ -335,39 +336,6 @@ class Test(unittest.TestCase):
                 x, y, pi, _ = png.Reader(bytes=pngs).read()
                 self.assertEqual([list(it) for it in ps], [list(it) for it in pi])
 
-    def testPGMin(self):
-        """Test that the command line tool can read PGM files."""
-        s = BytesIO()
-        s.write(strtobytes('P5 2 2 3\n'))
-        s.write(strtobytes('\x00\x01\x02\x03'))
-        s.flush()
-        s.seek(0)
-        o = BytesIO()
-        _redirect_io(s, o, lambda: png._main(['testPGMin']))
-        r = png.Reader(bytes=o.getvalue())
-        x,y,pixels,meta = r.read()
-        self.assertEqual(r.greyscale, True)
-        self.assertEqual(r.bitdepth, 2)
-
-    def testPAMin(self):
-        """Test that the command line tool can read PAM file."""
-        s = BytesIO()
-        s.write(strtobytes('P7\nWIDTH 3\nHEIGHT 1\nDEPTH 4\nMAXVAL 255\n'
-                'TUPLTYPE RGB_ALPHA\nENDHDR\n'))
-        # The pixels in flat row flat pixel format
-        flat = [255,0,0,255, 0,255,0,120, 0,0,255,30]
-        asbytes = seqtobytes(flat)
-        s.write(asbytes)
-        s.flush()
-        s.seek(0)
-        o = BytesIO()
-        _redirect_io(s, o, lambda: png._main(['testPAMin']))
-        r = png.Reader(bytes=o.getvalue())
-        x,y,pixels,meta = r.read()
-        self.assertEqual(r.alpha, True)
-        self.assertEqual(not r.greyscale,True)
-        self.assertEqual(list(itertools.chain(*pixels)), flat)
-
     def testLA4(self):
         """Create an LA image with bitdepth 4."""
         bytes = topngbytes('la4.png', [[5, 12]], 1, 1,
@@ -452,22 +420,6 @@ class Test(unittest.TestCase):
         # Same pixels
         again_pixels = [list(row) for row in again_pixels]
         self.assertEqual(again_pixels, pixels)
-
-    def testPNMsbit(self):
-        """Test that PNM files can generates sBIT chunk."""
-        def do():
-            return png._main(['testPNMsbit'])
-        s = BytesIO()
-        s.write(strtobytes('P6 8 1 1\n'))
-        for pixel in range(8):
-            s.write(struct.pack('<I', (0x4081*pixel)&0x10101)[:3])
-        s.flush()
-        s.seek(0)
-        o = BytesIO()
-        _redirect_io(s, o, do)
-        r = png.Reader(bytes=o.getvalue())
-        sbit = r.chunk('sBIT')[1]
-        self.assertEqual(sbit, strtobytes('\x01\x01\x01'))
 
     def testLtrns0(self):
         """Create greyscale image with tRNS chunk."""
@@ -1049,6 +1001,58 @@ class Test(unittest.TestCase):
             for i in range(len(row1)):
                 row1[i] = 11117 % (i + 1)
 
+
+# Cli tests work only with package
+class CliTest(unittest.TestCase):
+    def testPGMin(self):
+        """Test that the command line tool can read PGM files."""
+        s = BytesIO()
+        s.write(strtobytes('P5 2 2 3\n'))
+        s.write(strtobytes('\x00\x01\x02\x03'))
+        s.flush()
+        s.seek(0)
+        o = BytesIO()
+        _redirect_io(s, o, lambda: png.pnm2png.main(['testPGMin']))
+        r = png.Reader(bytes=o.getvalue())
+        r.read()
+        self.assertEqual(r.greyscale, True)
+        self.assertEqual(r.bitdepth, 2)
+
+    def testPAMin(self):
+        """Test that the command line tool can read PAM file."""
+        s = BytesIO()
+        s.write(strtobytes('P7\nWIDTH 3\nHEIGHT 1\nDEPTH 4\nMAXVAL 255\n'
+                'TUPLTYPE RGB_ALPHA\nENDHDR\n'))
+        # The pixels in flat row flat pixel format
+        flat = [255,0,0,255, 0,255,0,120, 0,0,255,30]
+        asbytes = seqtobytes(flat)
+        s.write(asbytes)
+        s.flush()
+        s.seek(0)
+        o = BytesIO()
+        _redirect_io(s, o, lambda: png.pnm2png.main(['testPAMin']))
+        r = png.Reader(bytes=o.getvalue())
+        pixels = r.read()[2]
+        self.assertEqual(r.alpha, True)
+        self.assertEqual(not r.greyscale, True)
+        self.assertEqual(list(itertools.chain(*pixels)), flat)
+
+    def testPNMsbit(self):
+        """Test that PNM files can generates sBIT chunk."""
+        def do():
+            return png.pnm2png.main(['testPNMsbit'])
+        s = BytesIO()
+        s.write(strtobytes('P6 8 1 1\n'))
+        for pixel in range(8):
+            s.write(struct.pack('<I', (0x4081 * pixel) & 0x10101)[:3])
+        s.flush()
+        s.seek(0)
+        o = BytesIO()
+        _redirect_io(s, o, do)
+        r = png.Reader(bytes=o.getvalue())
+        sbit = r.chunk('sBIT')[1]
+        self.assertEqual(sbit, strtobytes('\x01\x01\x01'))
+
     def testPNMWrite(self):
         """Test writing of 'pnm' file"""
         o = BytesIO()
@@ -1056,7 +1060,7 @@ class Test(unittest.TestCase):
                   [3, 0, 1],
                   [2, 3, 0]]
         meta = dict(alpha=False, greyscale=True, bitdepth=2, planes=1)
-        png.write_pnm(o, 3, 3, pixels, meta)
+        png.pnm2png.write_pnm(o, 3, 3, pixels, meta)
 
 try:
     import numpy

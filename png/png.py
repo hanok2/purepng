@@ -31,6 +31,7 @@
 # ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 # CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
+from __builtin__ import isinstance
 
 """
 Pure Python PNG Reader/Writer
@@ -53,12 +54,6 @@ classes.
 Requires Python 2.3.  Best with Python 2.6 and higher.  Installation is
 trivial, but see the ``README.txt`` file (with the source distribution)
 for details.
-
-This file can also be used as a command-line utility to convert
-`Netpbm <http://netpbm.sourceforge.net/>`_ PNM files to PNG, and the
-reverse conversion from PNG to PNM. The interface is similar to that
-of the ``pnmtopng`` program from Netpbm.  Type ``python png.py --help``
-at the shell prompt for usage and a list of options.
 
 A note on spelling and terminology
 ----------------------------------
@@ -174,8 +169,7 @@ __version__ = "0.3.0"
 __all__ = ['png_signature', 'Image', 'Reader', 'Writer',
            'Error', 'FormatError', 'ChunkError',
            'Filter', 'register_extra_filter',
-           'write_chunks', 'from_array', 'parse_mode',
-           'read_pam_header', 'read_pnm_header', 'write_pnm',
+           'write_chunks', 'from_array', 'parse_mode', 'MergedPlanes',
            'PERCEPTUAL', 'RELATIVE_COLORIMETRIC', 'SATURATION',
            'ABSOLUTE_COLORIMETRIC']
 
@@ -306,36 +300,6 @@ try:
     set
 except NameError:
     from sets import Set as set
-
-
-def interleave_planes(ipixels, apixels, ipsize, apsize):
-    """
-    Interleave (colour) planes, e.g. RGB + A = RGBA.
-
-    Return an array of pixels consisting of the `ipsize` elements of
-    data from each pixel in `ipixels` followed by the `apsize` elements
-    of data from each pixel in `apixels`.  Conventionally `ipixels`
-    and `apixels` are byte arrays so the sizes are bytes, but it
-    actually works with any arrays of the same type.  The returned
-    array is the same type as the input arrays which should be the
-    same type as each other.
-    """
-    itotal = len(ipixels)
-    atotal = len(apixels)
-    newtotal = itotal + atotal
-    newpsize = ipsize + apsize
-    # Set up the output buffer
-    # See http://www.python.org/doc/2.4.4/lib/module-array.html#l2h-1356
-    out = array(ipixels.typecode)
-    # It's annoying that there is no cheap way to set the array size :-(
-    out.extend(ipixels)
-    out.extend(apixels)
-    # Interleave in the pixel data
-    for i in range(ipsize):
-        out[i:newtotal:newpsize] = ipixels[i:itotal:ipsize]
-    for i in range(apsize):
-        out[i+ipsize:newtotal:newpsize] = apixels[i:atotal:apsize]
-    return out
 
 
 def peekiter(iterable):
@@ -1461,69 +1425,6 @@ class Writer(object):
               self.rescale[0])
         return self.write_passes(outfile, rows, packed=True)
 
-    def convert_pnm(self, infile, outfile):
-        """
-        Convert a PNM file containing raw pixel data into a PNG file
-        with the parameters set in the writer object.  Works for
-        (binary) PGM, PPM, and PAM formats.
-        """
-        if self.interlace:
-            pixels = array('B')
-            pixels.fromfile(infile,
-                            (self.bitdepth/8) * self.color_planes *
-                            self.width * self.height)
-            self.write_passes(outfile, self.array_scanlines_interlace(pixels))
-        else:
-            self.write_passes(outfile, self.file_scanlines(infile))
-
-    def convert_ppm_and_pgm(self, ppmfile, pgmfile, outfile):
-        """
-        Convert a PPM and PGM file containing raw pixel data into a
-        PNG outfile with the parameters set in the writer object.
-        """
-        pixels = array('B')
-        pixels.fromfile(ppmfile,
-                        (self.bitdepth/8) * self.color_planes *
-                        self.width * self.height)
-        apixels = array('B')
-        apixels.fromfile(pgmfile,
-                         (self.bitdepth/8) *
-                         self.width * self.height)
-        pixels = interleave_planes(pixels, apixels,
-                                   (self.bitdepth/8) * self.color_planes,
-                                   (self.bitdepth/8))
-        if self.interlace:
-            self.write_passes(outfile, self.array_scanlines_interlace(pixels))
-        else:
-            self.write_passes(outfile, self.array_scanlines(pixels))
-
-    def file_scanlines(self, infile):
-        """
-        Generates boxed rows in flat pixel format, from the input file.
-
-        It assumes that the input file is in a "Netpbm-like"
-        binary format, and is positioned at the beginning of the first
-        pixel.  The number of pixels to read is taken from the image
-        dimensions (`width`, `height`, `planes`) and the number of bytes
-        per value is implied by the image `bitdepth`.
-        """
-
-        # Values per row
-        vpr = self.width * self.planes
-        row_bytes = vpr
-        if self.bitdepth > 8:
-            assert self.bitdepth == 16
-            row_bytes *= 2
-            fmt = '>%dH' % vpr
-            def line():
-                return array('H', struct.unpack(fmt, infile.read(row_bytes)))
-        else:
-            def line():
-                scanline = array('B', infile.read(row_bytes))
-                return scanline
-        for y in range(self.height):
-            yield line()
-
     def array_scanlines(self, pixels):
         """
         Generates boxed rows (flat pixels) from flat rows (flat pixels)
@@ -1592,6 +1493,82 @@ def write_chunks(out, chunks):
     out.write(png_signature)
     for chunk in chunks:
         write_chunk(out, *chunk)
+
+
+class MergedPlanes(object):
+    """Merge two flatboxed iterator as new iterator"""
+    def __init__(self, seq_left, nplanes_left, seq_right, nplanes_right,
+                 bitdepth=None, width=None):
+        self.seq_left = seq_left
+        self.nplanes_left = nplanes_left
+        self.seq_right = seq_right
+        self.nplanes_right = nplanes_right
+        self.nplanes_res = nplanes_left + nplanes_right
+        self.bitdepth = bitdepth
+        self.width = width
+
+    def newarray(self, length, value=0):
+        if self.bitdepth > 8:
+            return array('H', [value] * length)
+        else:
+            return bytearray([value] * length)
+
+    def rigthgen(self, value=0):
+            while True:
+                yield self.newarray(self.nplanes_right * self.width, value)
+
+    def next(self):
+        left = next(self.seq_left)
+        if self.width is None:
+            self.width = len(left) / self.nplanes_left
+        if self.bitdepth is None:
+            # Detect bitdepth
+            if hasattr(left, 'itemsize'):  # array
+                self.bitdepth = left.itemsize * 8
+            elif isinstance(left, (bytes, bytearray)):  # bytearray
+                self.bitdepth = 8
+            else:
+                raise Error("Unknown bitdepth for merging planes")
+        right = next(self.seq_right)
+        rowlength = self.nplanes_res * self.width
+        new = self.newarray(rowlength)
+        if type(left) == type(right) == type(new):
+            # slice assignment
+            for i in range(self.nplanes_left):
+                new[i::rowlength] = left[i::self.nplanes_left]
+            for i in range(self.nplanes_right):
+                i_ = i + self.nplanes_left
+                new[i_::rowlength] = right[i_::self.nplanes_right]
+        else:
+            for i in range(self.nplanes_left):
+                for j in range(self.width):
+                    new[(i * rowlength) + j] =\
+                        left[(i * self.nplanes_left) + j]
+            for i in range(self.nplanes_right):
+                i_ = i + self.nplanes_left
+                for j in range(self.width):
+                    new[(i_ * rowlength) + j] =\
+                        right[(i_ * self.nplanes_right) + j]
+        return new
+
+    def __iter__(self):
+        return self
+
+
+def interleave_planes(ipixels, apixels, ipsize, apsize):
+    """
+    Interleave (colour) planes, e.g. RGB + A = RGBA.
+
+    Return an array of pixels consisting of the `ipsize` elements of
+    data from each pixel in `ipixels` followed by the `apsize` elements
+    of data from each pixel in `apixels`.  Conventionally `ipixels`
+    and `apixels` are byte arrays so the sizes are bytes, but it
+    actually works with any arrays of the same type.  The returned
+    array is the same type as the input arrays which should be the
+    same type as each other.
+    """
+    newi = MergedPlanes([ipixels], ipsize, [apixels], apsize)
+    return next(newi)
 
 
 class Filter(BaseFilter):
@@ -2964,311 +2941,3 @@ except TypeError:
 
     def newHarray(length=0):
         return array('H', [0] * length)
-
-# === Command Line Support ===
-
-def read_pam_header(infile):
-    """
-    Read (the rest of a) PAM header.
-
-    `infile` should be positioned
-    immediately after the initial 'P7' line (at the beginning of the
-    second line).  Returns are as for `read_pnm_header`.
-    """
-    # Unlike PBM, PGM, and PPM, we can read the header a line at a time.
-    header = dict()
-    while True:
-        l = infile.readline().strip()
-        if l == strtobytes('ENDHDR'):
-            break
-        if not l:
-            raise EOFError('PAM ended prematurely')
-        if l[0] == strtobytes('#'):
-            continue
-        l = l.split(None, 1)
-        if l[0] not in header:
-            header[l[0]] = l[1]
-        else:
-            header[l[0]] += strtobytes(' ') + l[1]
-
-    required = ['WIDTH', 'HEIGHT', 'DEPTH', 'MAXVAL']
-    required = [strtobytes(x) for x in required]
-    WIDTH,HEIGHT,DEPTH,MAXVAL = required
-    present = [x for x in required if x in header]
-    if len(present) != len(required):
-        raise Error('PAM file must specify WIDTH, HEIGHT, DEPTH, and MAXVAL')
-    width = int(header[WIDTH])
-    height = int(header[HEIGHT])
-    depth = int(header[DEPTH])
-    maxval = int(header[MAXVAL])
-    if (width <= 0 or
-        height <= 0 or
-        depth <= 0 or
-        maxval <= 0):
-        raise Error(
-          'WIDTH, HEIGHT, DEPTH, MAXVAL must all be positive integers')
-    return 'P7', width, height, depth, maxval
-
-
-def read_pnm_header(infile, supported=('P5','P6')):
-    """
-    Read a PNM header, returning (format,width,height,depth,maxval).
-
-    `width` and `height` are in pixels.  `depth` is the number of
-    channels in the image; for PBM and PGM it is synthesized as 1, for
-    PPM as 3; for PAM images it is read from the header.  `maxval` is
-    synthesized (as 1) for PBM images.
-    """
-    # Generally, see http://netpbm.sourceforge.net/doc/ppm.html
-    # and http://netpbm.sourceforge.net/doc/pam.html
-    supported = [strtobytes(x) for x in supported]
-
-    # Technically 'P7' must be followed by a newline, so by using
-    # rstrip() we are being liberal in what we accept.  I think this
-    # is acceptable.
-    type = infile.read(3).rstrip()
-    if type not in supported:
-        raise NotImplementedError('file format %s not supported' % type)
-    if type == strtobytes('P7'):
-        # PAM header parsing is completely different.
-        return read_pam_header(infile)
-    # Expected number of tokens in header (3 for P4, 4 for P6)
-    expected = 4
-    pbm = ('P1', 'P4')
-    if type in pbm:
-        expected = 3
-    header = [type]
-
-    # We have to read the rest of the header byte by byte because the
-    # final whitespace character (immediately following the MAXVAL in
-    # the case of P6) may not be a newline.  Of course all PNM files in
-    # the wild use a newline at this point, so it's tempting to use
-    # readline; but it would be wrong.
-    def getc():
-        c = infile.read(1)
-        if not c:
-            raise Error('premature EOF reading PNM header')
-        return c
-
-    c = getc()
-    while True:
-        # Skip whitespace that precedes a token.
-        while c.isspace():
-            c = getc()
-        # Skip comments.
-        while c == '#':
-            while c not in '\n\r':
-                c = getc()
-        if not c.isdigit():
-            raise Error('unexpected character %s found in header' % c)
-        # According to the specification it is legal to have comments
-        # that appear in the middle of a token.
-        # This is bonkers; I've never seen it; and it's a bit awkward to
-        # code good lexers in Python (no goto).  So we break on such
-        # cases.
-        token = bytes()
-        while c.isdigit():
-            token += c
-            c = getc()
-        # Slight hack.  All "tokens" are decimal integers, so convert
-        # them here.
-        header.append(int(token))
-        if len(header) == expected:
-            break
-    # Skip comments (again)
-    while c == '#':
-        while c not in '\n\r':
-            c = getc()
-    if not c.isspace():
-        raise Error('expected header to end with whitespace, not %s' % c)
-
-    if type in pbm:
-        # synthesize a MAXVAL
-        header.append(1)
-    depth = (1,3)[type == strtobytes('P6')]
-    return header[0], header[1], header[2], depth, header[3]
-
-
-def write_pnm(file, width, height, pixels, meta):
-    """Write a Netpbm PNM/PAM file."""
-    bitdepth = meta['bitdepth']
-    maxval = 2**bitdepth - 1
-    # Rudely, the number of image planes can be used to determine
-    # whether we are L (PGM), LA (PAM), RGB (PPM), or RGBA (PAM).
-    planes = meta['planes']
-    # Can be an assert as long as we assume that pixels and meta came
-    # from a PNG file.
-    assert planes in (1,2,3,4)
-    if planes in (1,3):
-        if 1 == planes:
-            # PGM
-            # Could generate PBM if maxval is 1, but we don't (for one
-            # thing, we'd have to convert the data, not just blat it
-            # out).
-            fmt = 'P5'
-        else:
-            # PPM
-            fmt = 'P6'
-        header = '%s %d %d %d\n' % (fmt, width, height, maxval)
-    if planes in (2,4):
-        # PAM
-        # See http://netpbm.sourceforge.net/doc/pam.html
-        if 2 == planes:
-            tupltype = 'GRAYSCALE_ALPHA'
-        else:
-            tupltype = 'RGB_ALPHA'
-        header = ('P7\nWIDTH %d\nHEIGHT %d\nDEPTH %d\nMAXVAL %d\n'
-                  'TUPLTYPE %s\nENDHDR\n' %
-                  (width, height, planes, maxval, tupltype))
-    file.write(strtobytes(header))
-    # Values per row
-    vpr = planes * width
-    # struct format
-    fmt = '>%d' % vpr
-    if maxval > 0xff:
-        fmt = fmt + 'H'
-    else:
-        fmt = fmt + 'B'
-    for row in pixels:
-        file.write(struct.pack(fmt, *row))
-    file.flush()
-
-def color_triple(color):
-    """
-    Convert a command line colour value to a RGB triple of integers.
-    FIXME: Somewhere we need support for greyscale backgrounds etc.
-    """
-    if color.startswith('#') and len(color) == 4:
-        return (int(color[1], 16),
-                int(color[2], 16),
-                int(color[3], 16))
-    if color.startswith('#') and len(color) == 7:
-        return (int(color[1:3], 16),
-                int(color[3:5], 16),
-                int(color[5:7], 16))
-    elif color.startswith('#') and len(color) == 13:
-        return (int(color[1:5], 16),
-                int(color[5:9], 16),
-                int(color[9:13], 16))
-
-def _add_common_options(parser):
-    """Call *parser.add_option* for each of the options that are
-    common between this PNG--PNM conversion tool and the gen
-    tool.
-    """
-    parser.add_option("-i", "--interlace",
-                      default=False, action="store_true",
-                      help="create an interlaced PNG file (Adam7)")
-    parser.add_option("-t", "--transparent",
-                      action="store", type="string", metavar="#RRGGBB",
-                      help="mark the specified colour as transparent")
-    parser.add_option("-b", "--background",
-                      action="store", type="string", metavar="#RRGGBB",
-                      help="save the specified background colour")
-    parser.add_option("-g", "--gamma",
-                      action="store", type="float", metavar="value",
-                      help="save the specified gamma value")
-    parser.add_option("-c", "--compression",
-                      action="store", type="int", metavar="level",
-                      help="zlib compression level (0-9)")
-    return parser
-
-
-def _main(argv):
-    """Run the PNG encoder with options from the command line."""
-
-    # Parse command line arguments
-    from optparse import OptionParser
-    version = '%prog ' + __version__
-    parser = OptionParser(version=version)
-    parser.set_usage("%prog [options] [imagefile]")
-    parser.add_option('-r', '--read-png', default=False,
-                      action='store_true',
-                      help='Read PNG, write PNM')
-    parser.add_option("-a", "--alpha",
-                      action="store", type="string", metavar="pgmfile",
-                      help="alpha channel transparency (RGBA)")
-    _add_common_options(parser)
-
-    (options, args) = parser.parse_args(args=argv[1:])
-
-    # Convert options
-    if options.transparent is not None:
-        options.transparent = color_triple(options.transparent)
-    if options.background is not None:
-        options.background = color_triple(options.background)
-
-    # Prepare input and output files
-    if len(args) == 0:
-        infilename = '-'
-        infile = sys.stdin
-    elif len(args) == 1:
-        infilename = args[0]
-        infile = open(infilename, 'rb')
-    else:
-        parser.error("more than one input file")
-    outfile = sys.stdout
-    if sys.platform == "win32":
-        import msvcrt, os
-        try:
-            msvcrt.setmode(sys.stdout.fileno(), os.O_BINARY)
-        except:
-            pass
-
-    if options.read_png:
-        # Encode PNG to PPM
-        png = Reader(file=infile)
-        width,height,pixels,meta = png.asDirect()
-        write_pnm(outfile, width, height, pixels, meta) 
-    else:
-        # Encode PNM to PNG
-        format, width, height, depth, maxval = \
-          read_pnm_header(infile, ('P5','P6','P7'))
-        # When it comes to the variety of input formats, we do something
-        # rather rude.  Observe that L, LA, RGB, RGBA are the 4 colour
-        # types supported by PNG and that they correspond to 1, 2, 3, 4
-        # channels respectively.  So we use the number of channels in
-        # the source image to determine which one we have.  We do not
-        # care about TUPLTYPE.
-        greyscale = depth <= 2
-        pamalpha = depth in (2, 4)
-        supported = [2 ** x - 1 for x in range(1, 17)]
-        try:
-            mi = supported.index(maxval)
-        except ValueError:
-            raise NotImplementedError(
-              'your maxval (%s) not in supported list %s' %
-              (maxval, str(supported)))
-        bitdepth = mi+1
-        writer = Writer(width, height,
-                        greyscale=greyscale,
-                        bitdepth=bitdepth,
-                        interlace=options.interlace,
-                        transparent=options.transparent,
-                        background=options.background,
-                        alpha=bool(pamalpha or options.alpha),
-                        gamma=options.gamma,
-                        compression=options.compression)
-        if options.alpha:
-            pgmfile = open(options.alpha, 'rb')
-            format, awidth, aheight, adepth, amaxval = \
-              read_pnm_header(pgmfile, 'P5')
-            if amaxval != '255':
-                raise NotImplementedError(
-                  'maxval %s not supported for alpha channel' % amaxval)
-            if (awidth, aheight) != (width, height):
-                raise ValueError("alpha channel image size mismatch"
-                                 " (%s has %sx%s but %s has %sx%s)"
-                                 % (infilename, width, height,
-                                    options.alpha, awidth, aheight))
-            writer.convert_ppm_and_pgm(infile, pgmfile, outfile)
-        else:
-            writer.convert_pnm(infile, outfile)
-
-
-if __name__ == '__main__':
-    try:
-        _main(sys.argv)
-    except Error:
-        e = sys.exc_info()[1]
-        logging.error(e)
