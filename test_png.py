@@ -365,6 +365,7 @@ class Test(unittest.TestCase):
         self.assertEqual(pal[bkgd_idx], (255, 255, 0, 255))
 
     def testBkdg(self):
+        """Test simple RGB background"""
         pngsuite.bgwn6a08.seek(0)
         r = png.Reader(pngsuite.bgwn6a08)
         info = r.read()[3]
@@ -372,18 +373,17 @@ class Test(unittest.TestCase):
         self.assertEqual(info['background'], (255, 255, 255))
 
     def testPalWrite(self):
-        """Test metadata for paletted PNG can be passed from one PNG
-        to another."""
-        pngsuite.basn3p04.seek(0)
-        r = png.Reader(pngsuite.basn3p04)
-        _, _, pixels, info = r.read()
+        """Test palette kept intact after writing and re-reading"""
+        pngsuite.png['basn3p04'].seek(0)
+        r = png.Reader(pngsuite.png['basn3p04'])
+        pixels, info = r.read()[2:]
         w = png.Writer(**info)
         o = BytesIO()
         w.write(o, pixels)
         o.flush()
         o.seek(0)
         r = png.Reader(file=o)
-        _, _, _, again_info = r.read()
+        again_info = r.read()[3]
         # Same palette
         self.assertEqual(again_info['palette'], info['palette'])
 
@@ -405,9 +405,9 @@ class Test(unittest.TestCase):
 
     def testPalExpand(self):
         """Test that bitdepth can be used to fiddle with pallete image."""
-        pngsuite.basn3p04.seek(0)
-        r = png.Reader(pngsuite.basn3p04)
-        x,y,pixels,info = r.read()
+        pngsuite.png['basn3p04'].seek(0)
+        r = png.Reader(pngsuite.png['basn3p04'])
+        pixels, info = r.read()[2:]
         pixels = [list(row) for row in pixels]
         info['bitdepth'] = 8
         w = png.Writer(**info)
@@ -416,7 +416,7 @@ class Test(unittest.TestCase):
         o.flush()
         o.seek(0)
         r = png.Reader(file=o)
-        _,_,again_pixels,again_info = r.read()
+        again_pixels = r.read()[2]
         # Same pixels
         again_pixels = [list(row) for row in again_pixels]
         self.assertEqual(again_pixels, pixels)
@@ -436,7 +436,7 @@ class Test(unittest.TestCase):
         w = png.Writer(8, 8, greyscale=True, bitdepth=1, transparent=transparent)
         w.write_packed(o, pixels)
         r = png.Reader(bytes=o.getvalue())
-        x,y,pixels,meta = r.asDirect()
+        meta = r.asDirect()[3]
         self.assertEqual(meta['alpha'], True)
         self.assertEqual(meta['greyscale'], True)
         self.assertEqual(meta['bitdepth'], 1)
@@ -514,7 +514,7 @@ class Test(unittest.TestCase):
         pngsuite.png['basn2c16'].seek(0)
         r = png.Reader(file=pngsuite.png['basn2c16'])
         info = r.read()[3]
-        _ = png.Writer(**info)
+        png.Writer(**info)
 
     def testText(self):
         """Test text information saving and retrieving"""
@@ -591,7 +591,7 @@ class Test(unittest.TestCase):
             raise AssertionError("No text with Creation Time")
 
     def testTIMEChunkIO(self):
-        """Consistency write/read test of tIME chunk """
+        """Consistency write/read test of tIME chunk"""
         pixels = [range(0, 8)] * 8
         io = BytesIO()
         p = dict(size=(len(pixels[0]), len(pixels)), modification_time=True)
@@ -670,6 +670,8 @@ class Test(unittest.TestCase):
 
     def testInterlacedBuffer(self):
         """
+        Test buffer compatibility for interlace
+
         Test that reading an interlaced PNG yields each row as
         buffer-compatible type.
         """
@@ -733,7 +735,7 @@ class Test(unittest.TestCase):
         pngsuite.png['xhdn0g08'].seek(0)
         r = png.Reader(pngsuite.png['xhdn0g08'])
         self.assertRaises(png.ChunkError, r.asDirect)
-        # IDAT 
+        # IDAT
         pngsuite.png['xcsn0g01'].seek(0)
         r = png.Reader(pngsuite.png['xcsn0g01'])
         pixels = r.asDirect()[2]
@@ -873,7 +875,7 @@ class Test(unittest.TestCase):
     def testfromarrayRGB(self):
         """Test 1-bit RGB files from array"""
         img = png.from_array([[0,0,0, 0,0,1, 0,1,0, 0,1,1],
-                          [1,0,0, 1,0,1, 1,1,0, 1,1,1]], 'RGB;1')
+                              [1,0,0, 1,0,1, 1,1,0, 1,1,1]], 'RGB;1')
         o = BytesIO()
         img.save(o)
 
@@ -994,8 +996,8 @@ class Test(unittest.TestCase):
         r1 = png.Reader(bytes=pngsuite.png[k].read())
         pngsuite.png[k].seek(0)
         r2 = png.Reader(bytes=pngsuite.png[k].read())
-        _, _, pixels1, info1 = r1.asDirect()
-        _, _, pixels2, info2 = r2.asDirect()
+        pixels1 = r1.asDirect()[2]
+        pixels2 = r2.asDirect()[2]
         for row1, row2 in zip(pixels1, pixels2):
             self.assertEqual(row1, row2)
             for i in range(len(row1)):
@@ -1004,6 +1006,7 @@ class Test(unittest.TestCase):
 
 # Cli tests work only with package
 class CliTest(unittest.TestCase):
+    """Test for command-line utility"""
     def testPGMin(self):
         """Test that the command line tool can read PGM files."""
         s = BytesIO()

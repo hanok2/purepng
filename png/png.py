@@ -1497,11 +1497,15 @@ def write_chunks(out, chunks):
 
 class MergedPlanes(object):
     """Merge two flatboxed iterator as new iterator"""
+
     def __init__(self, seq_left, nplanes_left, seq_right, nplanes_right,
                  bitdepth=None, width=None):
         self.seq_left = seq_left
         self.nplanes_left = nplanes_left
-        self.seq_right = seq_right
+        if isinstance(seq_right, int):
+            self.seq_right = self.rigthgen(seq_right)
+        else:
+            self.seq_right = seq_right
         self.nplanes_right = nplanes_right
         self.nplanes_res = nplanes_left + nplanes_right
         self.bitdepth = bitdepth
@@ -1514,8 +1518,8 @@ class MergedPlanes(object):
             return bytearray([value] * length)
 
     def rigthgen(self, value=0):
-            while True:
-                yield self.newarray(self.nplanes_right * self.width, value)
+        while True:
+            yield self.newarray(self.nplanes_right * self.width, value)
 
     def next(self):
         left = next(self.seq_left)

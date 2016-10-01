@@ -1,10 +1,10 @@
-'''
+"""
 This is a command-line utility to convert
 `Netpbm <http://netpbm.sourceforge.net/>`_ PNM files to PNG, and the
 reverse conversion from PNG to PNM. The interface is similar to that
-of the ``pnmtopng`` program from Netpbm.  Type ``python png.py --help``
+of the ``pnmtopng`` program from Netpbm.  Type ``python pnm2png.py --help``
 at the shell prompt for usage and a list of options.
-'''
+"""
 import sys
 import struct
 # TODO: fix to relative import
@@ -22,7 +22,6 @@ def file_scanlines(infile, width, height, planes, bitdepth):
     dimensions (`width`, `height`, `planes`) and the number of bytes
     per value is implied by the image `bitdepth`.
     """
-
     # Values per row
     vpr = width * planes
     row_bytes = vpr
@@ -151,8 +150,7 @@ def read_pnm_header(infile, supported=('P5', 'P6')):
         return read_pam_header(infile)
     # Expected number of tokens in header (3 for P4, 4 for P6)
     expected = 4
-    pbm = ('P1', 'P4')
-    if type in pbm:
+    if mode in ('P1', 'P4'):
         expected = 3
     header = [mode]
 
@@ -175,6 +173,7 @@ def read_pnm_header(infile, supported=('P5', 'P6')):
         # Skip comments.
         while c == '#':
             while c not in '\n\r':
+                # TODO: what about Windows 2-chr newline
                 c = getc()
         if not c.isdigit():
             raise png.Error('unexpected character %s found in header' % c)
@@ -192,6 +191,9 @@ def read_pnm_header(infile, supported=('P5', 'P6')):
         header.append(int(token))
         if len(header) == expected:
             break
+    if len(mode) == 3:
+        # synthesize a MAXVAL
+        header.append(1)
     # Skip comments (again)
     while c == '#':
         while c not in '\n\r':
@@ -199,18 +201,13 @@ def read_pnm_header(infile, supported=('P5', 'P6')):
     if not c.isspace():
         raise png.Error('expected header to end with whitespace, not %s' % c)
 
-    if type in pbm:
-        # synthesize a MAXVAL
-        header.append(1)
     depth = (1, 3)[mode == png.strtobytes('P6')]
     return header[0], header[1], header[2], depth, header[3]
 
 
 def color_triple(color):
-    """
-    Convert a command line colour value to a RGB triple of integers.
-    FIXME: Somewhere we need support for greyscale backgrounds etc.
-    """
+    """Convert a command line colour value to a RGB triple of integers."""
+    # FIXME: Somewhere we need support for greyscale backgrounds etc.
     if color.startswith('#') and len(color) == 4:
         return (int(color[1], 16),
                 int(color[2], 16),
@@ -225,10 +222,8 @@ def color_triple(color):
                 int(color[9:13], 16))
 
 
-def main(argv):
-    """Run the PNG encoder with options from the command line."""
-
-    # Parse command line arguments
+def parse_options(args):
+    """Parse command line arguments"""
     from optparse import OptionParser
     version = '%prog ' + png.__version__
     parser = OptionParser(version=version)
@@ -254,9 +249,7 @@ def main(argv):
     parser.add_option("-c", "--compression",
                       action="store", type="int", metavar="level",
                       help="zlib compression level (0-9)")
-
-    (options, args) = parser.parse_args(args=argv[1:])
-
+    (options, args) = parser.parse_args(args=args)
     # Convert options
     if options.transparent is not None:
         options.transparent = color_triple(options.transparent)
@@ -279,6 +272,12 @@ def main(argv):
             msvcrt.setmode(sys.stdout.fileno(), os.O_BINARY)
         except:
             pass
+    return (options, infilename, infile, outfile)
+
+
+def main(argv):
+    """Run the PNG encoder with options from the command line."""
+    (options, infilename, infile, outfile) = parse_options(argv[1:])
 
     if options.read_png:
         # Encode PNG to PPM
@@ -322,6 +321,8 @@ def main(argv):
             if amaxval != '255':
                 raise NotImplementedError(
                   'maxval %s not supported for alpha channel' % amaxval)
+            if adepth != 1:
+                raise ValueError("alpha image should have 1 channel")
             if (awidth, aheight) != (width, height):
                 raise ValueError("alpha channel image size mismatch"
                                  " (%s has %sx%s but %s has %sx%s)"

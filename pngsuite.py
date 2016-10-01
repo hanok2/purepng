@@ -1,8 +1,7 @@
-# pngsuite.py
+"""
+PngSuite Test PNGs.
 
-# PngSuite Test PNGs.
-
-"""After you import this module with "import pngsuite" use
+After you import this module with "import pngsuite" use
 ``pngsuite.bai0g01`` to get the bytes for a particular PNG image, or
 use ``pngsuite.png`` to get a dict() of them all.
 """
