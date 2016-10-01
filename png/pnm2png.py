@@ -10,6 +10,39 @@ import struct
 # TODO: fix to relative import
 import png
 from png import array
+try:
+    from png import bytearray
+except ImportError:
+    # bytearray absent in png when there is native bytearray
+    pass
+
+
+def pbmb_scanlines(infile, width, height):
+    """
+    Generates boxed rows in flat pixel format, from the PBM input file.
+
+    It assumes that the input file is in a "Netpbm-like"
+    binary format, and is positioned at the beginning of the first
+    pixel.  The number of pixels to read is taken from the image
+    dimensions (`width`, `height`).
+    """
+    def int2bitseq(byte):
+        """Crude but simple way to unpack byte to bits"""
+        if isinstance(byte, str):
+            byte = ord(byte)
+        res = bytearray()
+        for _ in range(8):
+            (byte, bit) = divmod(byte, 2)
+            res.append(bit)
+        return res
+
+    tail = bytearray()
+    for _ in range(height):
+        while len(tail) < width:
+            byte = infile.read(1)
+            tail.extend(int2bitseq(byte))
+        yield bytearray(tail[:width])
+        tail = tail[width:]
 
 
 def file_scanlines(infile, width, height, planes, bitdepth):
@@ -165,33 +198,34 @@ def read_pnm_header(infile, supported=('P5', 'P6')):
             raise png.Error('premature EOF reading PNM header')
         return c
 
-    c = getc()
     while True:
-        # Skip whitespace that precedes a token.
-        while c.isspace():
-            c = getc()
-        # Skip comments.
-        while c == '#':
+        c = getc()
+        if c.isspace():
+            # Skip whitespace that precedes a token.
+            continue
+        elif c == '#':
+            # Skip comments.
             while c not in '\n\r':
-                # TODO: what about Windows 2-chr newline
                 c = getc()
-        if not c.isdigit():
+        elif c.isdigit():
+            # According to the specification it is legal to have comments
+            # that appear in the middle of a token.
+            # This is bonkers; I've never seen it; and it's a bit awkward to
+            # code good lexers in Python (no goto).  So we break on such
+            # cases.
+            token = bytes()
+            while c.isdigit():
+                token += c
+                c = getc()
+            # Slight hack.  All "tokens" are decimal integers, so convert
+            # them here.
+            header.append(int(token))
+            if len(header) == expected:
+                break
+        else:
             raise png.Error('unexpected character %s found in header' % c)
-        # According to the specification it is legal to have comments
-        # that appear in the middle of a token.
-        # This is bonkers; I've never seen it; and it's a bit awkward to
-        # code good lexers in Python (no goto).  So we break on such
-        # cases.
-        token = bytes()
-        while c.isdigit():
-            token += c
-            c = getc()
-        # Slight hack.  All "tokens" are decimal integers, so convert
-        # them here.
-        header.append(int(token))
-        if len(header) == expected:
-            break
-    if len(mode) == 3:
+
+    if len(header) == 3:
         # synthesize a MAXVAL
         header.append(1)
     # Skip comments (again)
@@ -286,8 +320,8 @@ def main(argv):
         write_pnm(outfile, width, height, pixels, meta)
     else:
         # Encode PNM to PNG
-        _, width, height, depth, maxval = \
-          read_pnm_header(infile, ('P5', 'P6', 'P7'))
+        mode, width, height, depth, maxval = \
+          read_pnm_header(infile, ('P4', 'P5', 'P6', 'P7'))
         # When it comes to the variety of input formats, we do something
         # rather rude.  Observe that L, LA, RGB, RGBA are the 4 colour
         # types supported by PNG and that they correspond to 1, 2, 3, 4
@@ -313,7 +347,10 @@ def main(argv):
                         alpha=bool(pamalpha or options.alpha),
                         gamma=options.gamma,
                         compression=options.compression)
-        rows = file_scanlines(infile, width, height, depth, bitdepth)
+        if mode == 'P4':
+            rows = pbmb_scanlines(infile, width, height)
+        else:
+            rows = file_scanlines(infile, width, height, depth, bitdepth)
         if options.alpha:
             apgmfile = open(options.alpha, 'rb')
             _, awidth, aheight, adepth, amaxval = \

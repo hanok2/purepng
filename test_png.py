@@ -28,6 +28,8 @@ import unittest
 import zlib
 import itertools
 import datetime
+import tarfile
+import os.path
 
 try:
     from itertool import izip as zip
@@ -1004,9 +1006,24 @@ class Test(unittest.TestCase):
                 row1[i] = 11117 % (i + 1)
 
 
+extra_file = tarfile.open(os.path.join(os.path.dirname(__file__),
+                                       "Misc.tgz"))
+
+
 # Cli tests work only with package
 class CliTest(unittest.TestCase):
     """Test for command-line utility"""
+    def testPBMin(self):
+        """Test that the command line tool can read PBM files."""
+        s = extra_file.extractfile('feep.pbm')
+        s.seek(0)
+        o = BytesIO()
+        _redirect_io(s, o, lambda: png.pnm2png.main(['testPBMin']))
+        r = png.Reader(bytes=o.getvalue())
+        r.read()
+        self.assertEqual(r.greyscale, True)
+        self.assertEqual(r.bitdepth, 1)
+
     def testPGMin(self):
         """Test that the command line tool can read PGM files."""
         s = BytesIO()
@@ -1042,8 +1059,6 @@ class CliTest(unittest.TestCase):
 
     def testPNMsbit(self):
         """Test that PNM files can generates sBIT chunk."""
-        def do():
-            return png.pnm2png.main(['testPNMsbit'])
         s = BytesIO()
         s.write(strtobytes('P6 8 1 1\n'))
         for pixel in range(8):
@@ -1051,7 +1066,7 @@ class CliTest(unittest.TestCase):
         s.flush()
         s.seek(0)
         o = BytesIO()
-        _redirect_io(s, o, do)
+        _redirect_io(s, o, lambda: png.pnm2png.main(['testPNMsbit']))
         r = png.Reader(bytes=o.getvalue())
         sbit = r.chunk('sBIT')[1]
         self.assertEqual(sbit, strtobytes('\x01\x01\x01'))
