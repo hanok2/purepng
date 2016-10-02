@@ -7,14 +7,89 @@ at the shell prompt for usage and a list of options.
 """
 import sys
 import struct
-# TODO: fix to relative import
-import png
-from png import array
 try:
+    exec("from . import png", globals(), locals())
+    exec("from .png import array", globals(), locals())
+except SyntaxError:
+    # On Python < 2.5 relative import cause syntax error
+    import png
+    from png import array
+try:
+    bytearray
+    bytes
+except NameError:
+    # bytearray missed on Python < 2.6 where ralative import supported
     from png import bytearray
-except ImportError:
-    # bytearray absent in png when there is native bytearray
-    pass
+    bytes = str
+
+
+def read_int_tokens(infile, n, allow_eof=False):
+    """
+    Read ASCII integers separated with whitespaces as list of length `n`
+
+    Skip comments started with '#' to the end of line
+    If comment starts right after digit and newline starts with digit
+    these digits form single number.
+    """
+    result = bytearray()
+    EOF = [False]  # Hack to allow modification in nested function
+
+    # We may consume less or more than one line, so characters read one by one
+    def getc():
+        c = infile.read(1)
+        if not c:
+            if not allow_eof or EOF[0]:
+                raise png.Error('premature End of file')
+            else:
+                # small hack to simulate trailing whitespace at the end of file
+                EOF[0] = True   # but only once
+                return ' '
+        return c
+    token = bytes()
+    while True:
+        c = getc()
+        if c.isspace():
+            if token:
+                # post-token whitespace, save token
+                result.append(int(token))
+                if len(result) == n:
+                    # we get here on last whitespace
+                    break
+                # and clean for new token
+                token = bytes()
+            # Skip whitespace that precedes a token or between tokens.
+        elif c == png.strtobytes('#'):
+            # Skip comments to the end of line.
+            infile.readline()
+            # If there is no whitespaces after conventional newline
+            # continue reading token
+        elif c.isdigit():
+            token += c
+        else:
+            raise png.Error('unexpected character %s found ' % c)
+    return result
+
+
+def ascii_scanlines(infile, width, height, planes, bitdepth):
+    """
+    Generates boxed rows in flat pixel format, from the input file.
+
+    It assumes that the input file is in a "Netpbm-like"
+    ASCII format, and is positioned at the beginning of the first
+    pixel.  The number of pixels to read is taken from the image
+    dimensions (`width`, `height`, `planes`) and the number of bytes
+    per value is implied by the image `bitdepth`.
+    """
+    # Values per row
+    vpr = width * planes
+    if bitdepth > 8:
+        assert bitdepth == 16
+        typecode = 'H'
+    else:
+        typecode = 'B'
+    for _ in range(height):
+        line = read_int_tokens(infile, vpr, True)
+        yield array(typecode, line)
 
 
 def pbmb_scanlines(infile, width, height):
@@ -28,7 +103,7 @@ def pbmb_scanlines(infile, width, height):
     """
     def int2bitseq(byte):
         """Crude but simple way to unpack byte to bits"""
-        if isinstance(byte, str):
+        if isinstance(byte, (str, bytes)):
             byte = ord(byte)
         res = bytearray()
         for _ in range(8):
@@ -67,9 +142,8 @@ def file_scanlines(infile, width, height, planes, bitdepth):
             return array('H', struct.unpack(fmt, infile.read(row_bytes)))
     else:
         def line():
-            scanline = array('B', infile.read(row_bytes))
-            return scanline
-    for y in range(height):
+            return array('B', infile.read(row_bytes))
+    for _ in range(height):
         yield line()
 
 
@@ -183,59 +257,15 @@ def read_pnm_header(infile, supported=('P5', 'P6')):
         return read_pam_header(infile)
     # Expected number of tokens in header (3 for P4, 4 for P6)
     expected = 4
-    if mode in ('P1', 'P4'):
+    if mode in (png.strtobytes('P1'), png.strtobytes('P4')):
         expected = 3
     header = [mode]
-
-    # We have to read the rest of the header byte by byte because the
-    # final whitespace character (immediately following the MAXVAL in
-    # the case of P6) may not be a newline.  Of course all PNM files in
-    # the wild use a newline at this point, so it's tempting to use
-    # readline; but it would be wrong.
-    def getc():
-        c = infile.read(1)
-        if not c:
-            raise png.Error('premature EOF reading PNM header')
-        return c
-
-    while True:
-        c = getc()
-        if c.isspace():
-            # Skip whitespace that precedes a token.
-            continue
-        elif c == '#':
-            # Skip comments.
-            while c not in '\n\r':
-                c = getc()
-        elif c.isdigit():
-            # According to the specification it is legal to have comments
-            # that appear in the middle of a token.
-            # This is bonkers; I've never seen it; and it's a bit awkward to
-            # code good lexers in Python (no goto).  So we break on such
-            # cases.
-            token = bytes()
-            while c.isdigit():
-                token += c
-                c = getc()
-            # Slight hack.  All "tokens" are decimal integers, so convert
-            # them here.
-            header.append(int(token))
-            if len(header) == expected:
-                break
-        else:
-            raise png.Error('unexpected character %s found in header' % c)
-
+    header.extend(read_int_tokens(infile, expected - 1, False))
     if len(header) == 3:
         # synthesize a MAXVAL
         header.append(1)
-    # Skip comments (again)
-    while c == '#':
-        while c not in '\n\r':
-            c = getc()
-    if not c.isspace():
-        raise png.Error('expected header to end with whitespace, not %s' % c)
 
-    depth = (1, 3)[mode == png.strtobytes('P6')]
+    depth = (1, 3)[mode in (png.strtobytes('P3'), png.strtobytes('P6'))]
     return header[0], header[1], header[2], depth, header[3]
 
 
@@ -321,7 +351,7 @@ def main(argv):
     else:
         # Encode PNM to PNG
         mode, width, height, depth, maxval = \
-          read_pnm_header(infile, ('P4', 'P5', 'P6', 'P7'))
+          read_pnm_header(infile, ('P1', 'P2', 'P3', 'P4', 'P5', 'P6', 'P7'))
         # When it comes to the variety of input formats, we do something
         # rather rude.  Observe that L, LA, RGB, RGBA are the 4 colour
         # types supported by PNG and that they correspond to 1, 2, 3, 4
@@ -332,12 +362,11 @@ def main(argv):
         pamalpha = depth in (2, 4)
         supported = [2 ** x - 1 for x in range(1, 17)]
         try:
-            mi = supported.index(maxval)
+            bitdepth = supported.index(maxval) + 1
         except ValueError:
             raise NotImplementedError(
               'your maxval (%s) not in supported list %s' %
               (maxval, str(supported)))
-        bitdepth = mi + 1
         writer = png.Writer(width, height,
                         greyscale=greyscale,
                         bitdepth=bitdepth,
@@ -347,17 +376,22 @@ def main(argv):
                         alpha=bool(pamalpha or options.alpha),
                         gamma=options.gamma,
                         compression=options.compression)
-        if mode == 'P4':
+        if mode == png.strtobytes('P4'):
             rows = pbmb_scanlines(infile, width, height)
+        elif mode in (png.strtobytes('P1'),
+                      png.strtobytes('P2'),
+                      png.strtobytes('P3')):
+            rows = ascii_scanlines(infile, width, height, depth, bitdepth)
         else:
             rows = file_scanlines(infile, width, height, depth, bitdepth)
         if options.alpha:
             apgmfile = open(options.alpha, 'rb')
             _, awidth, aheight, adepth, amaxval = \
                 read_pnm_header(apgmfile, 'P5')
-            if amaxval != '255':
+            if amaxval != maxval:
                 raise NotImplementedError(
-                  'maxval %s not supported for alpha channel' % amaxval)
+                  'maxval %s of alpha channel mismatch %s maxval %s'
+                  % (amaxval, infilename, maxval))
             if adepth != 1:
                 raise ValueError("alpha image should have 1 channel")
             if (awidth, aheight) != (width, height):

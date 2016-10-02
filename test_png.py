@@ -210,7 +210,7 @@ class Test(unittest.TestCase):
                          [0xff, 0xdf, 0xff, 0xff, 0xff, 0xde, 0xff, 0xff])
 
         # More testing: rescale and bitdepth > 8
-        pngsuite.png["basn2c18"].seek(0)
+        pngsuite.png["basn2c16"].seek(0)
         r = png.Reader(pngsuite.png["basn2c16"])
         pixels = r.asRGBA8()[2]
         # Test the pixels at row 9 columns 0 and 1.
@@ -1006,6 +1006,18 @@ class CliTest(unittest.TestCase):
         r.read()
         self.assertEqual(r.greyscale, True)
         self.assertEqual(r.bitdepth, 2)
+
+    def testPPMAin(self):
+        """Test that the command line tool can read ASCII PPM files."""
+        s = extra_file.extractfile('feep.ascii.ppm')
+        s.seek(0)
+        o = BytesIO()
+        _redirect_io(s, o, lambda: png.pnm2png.main(['testPPMAin']))
+        r = png.Reader(bytes=o.getvalue())
+        r.read()
+        self.assertEqual(r.greyscale, False)
+        # bitdepth 4 could be saved in RGB only as sBIT
+        self.assertEqual(r.sbit, strtobytes('\x04\x04\x04'))
 
     def testPAMin(self):
         """Test that the command line tool can read PAM file."""
