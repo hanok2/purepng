@@ -10,7 +10,7 @@ import struct
 try:
     exec("from . import png", globals(), locals())
     exec("from .png import array", globals(), locals())
-except SyntaxError:
+except (SyntaxError, ValueError):
     # On Python < 2.5 relative import cause syntax error
     import png
     from png import array
@@ -31,7 +31,7 @@ def read_int_tokens(infile, n, allow_eof=False):
     If comment starts right after digit and newline starts with digit
     these digits form single number.
     """
-    result = bytearray()
+    result = []
     EOF = [False]  # Hack to allow modification in nested function
 
     # We may consume less or more than one line, so characters read one by one
@@ -142,7 +142,7 @@ def file_scanlines(infile, width, height, planes, bitdepth):
             return array('H', struct.unpack(fmt, infile.read(row_bytes)))
     else:
         def line():
-            return array('B', infile.read(row_bytes))
+            return bytearray(infile.read(row_bytes))
     for _ in range(height):
         yield line()
 
@@ -387,7 +387,7 @@ def main(argv):
         if options.alpha:
             apgmfile = open(options.alpha, 'rb')
             _, awidth, aheight, adepth, amaxval = \
-                read_pnm_header(apgmfile, 'P5')
+                read_pnm_header(apgmfile, ('P5', ))
             if amaxval != maxval:
                 raise NotImplementedError(
                   'maxval %s of alpha channel mismatch %s maxval %s'

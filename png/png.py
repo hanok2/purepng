@@ -31,7 +31,6 @@
 # ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 # CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
-from __builtin__ import isinstance
 
 """
 Pure Python PNG Reader/Writer
@@ -1496,10 +1495,22 @@ def write_chunks(out, chunks):
 
 
 class MergedPlanes(object):
+
     """Merge two flatboxed iterator as new iterator"""
 
     def __init__(self, seq_left, nplanes_left, seq_right, nplanes_right,
                  bitdepth=None, width=None):
+        """
+        Initialise merge iterator with sources
+
+        Each row of this iterator is array of pixels consisting
+        of the `nplanes_left` elements of data from row of `seq_left'
+        iterator followed by the `nplanes_right` elements of data
+        from row of `seq_right` iterator.
+
+        `seq_right` also may be integer instead of iterator this represent
+        filling pixels with this value
+        """
         self.seq_left = seq_left
         self.nplanes_left = nplanes_left
         if isinstance(seq_right, int):
@@ -1512,16 +1523,19 @@ class MergedPlanes(object):
         self.width = width
 
     def newarray(self, length, value=0):
+        """Initialise empty row"""
         if self.bitdepth > 8:
             return array('H', [value] * length)
         else:
             return bytearray([value] * length)
 
     def rigthgen(self, value=0):
+        """Generate rows to fill right pixels in int mode"""
         while True:
             yield self.newarray(self.nplanes_right * self.width, value)
 
     def next(self):
+        """Generate merged row, consuming rows of original iterstors"""
         left = next(self.seq_left)
         if self.width is None:
             self.width = len(left) / self.nplanes_left
@@ -1539,23 +1553,28 @@ class MergedPlanes(object):
         if type(left) == type(right) == type(new):
             # slice assignment
             for i in range(self.nplanes_left):
-                new[i::rowlength] = left[i::self.nplanes_left]
+                new[i::self.nplanes_res] = left[i::self.nplanes_left]
             for i in range(self.nplanes_right):
                 i_ = i + self.nplanes_left
-                new[i_::rowlength] = right[i_::self.nplanes_right]
+                new[i_::self.nplanes_res] = right[i::self.nplanes_right]
         else:
             for i in range(self.nplanes_left):
                 for j in range(self.width):
-                    new[(i * rowlength) + j] =\
+                    new[(i * self.nplanes_res) + j] =\
                         left[(i * self.nplanes_left) + j]
             for i in range(self.nplanes_right):
                 i_ = i + self.nplanes_left
                 for j in range(self.width):
-                    new[(i_ * rowlength) + j] =\
-                        right[(i_ * self.nplanes_right) + j]
+                    new[(i_ * self.nplanes_res) + j] =\
+                        right[(i * self.nplanes_right) + j]
         return new
 
+    def __next__(self):
+        """Iterator protocol"""
+        return self.next()
+
     def __iter__(self):
+        """Iterator protocol"""
         return self
 
 
@@ -1571,6 +1590,8 @@ def interleave_planes(ipixels, apixels, ipsize, apsize):
     array is the same type as the input arrays which should be the
     same type as each other.
     """
+    warnings.warn('please use `Merge Planes` class instead',
+                  DeprecationWarning)
     newi = MergedPlanes([ipixels], ipsize, [apixels], apsize)
     return next(newi)
 

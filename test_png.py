@@ -28,7 +28,6 @@ import unittest
 import zlib
 import itertools
 import datetime
-import tarfile
 import os.path
 
 try:
@@ -975,19 +974,17 @@ class Test(unittest.TestCase):
                 row1[i] = 11117 % (i + 1)
 
 
-extra_file = tarfile.open(os.path.join(os.path.dirname(__file__),
-                                       "Misc.tgz"))
-
-
 # Cli tests work only with package
 class CliTest(unittest.TestCase):
+
     """Test for command-line utility"""
+
     def testPBMin(self):
         """Test that the command line tool can read PBM files."""
-        s = extra_file.extractfile('feep.pbm')
-        s.seek(0)
+        s = os.path.join(os.path.dirname(__file__),
+                         'testfiles', 'feep.pbm')
         o = BytesIO()
-        _redirect_io(s, o, lambda: png.pnm2png.main(['testPBMin']))
+        _redirect_io(None, o, lambda: png.pnm2png.main(['testPBMin', s]))
         r = png.Reader(bytes=o.getvalue())
         r.read()
         self.assertEqual(r.greyscale, True)
@@ -1007,17 +1004,31 @@ class CliTest(unittest.TestCase):
         self.assertEqual(r.greyscale, True)
         self.assertEqual(r.bitdepth, 2)
 
-    def testPPMAin(self):
+    def testPPMASCIIin(self):
         """Test that the command line tool can read ASCII PPM files."""
-        s = extra_file.extractfile('feep.ascii.ppm')
-        s.seek(0)
+        s = os.path.join(os.path.dirname(__file__),
+                         'testfiles', 'feep.ascii.ppm')
         o = BytesIO()
-        _redirect_io(s, o, lambda: png.pnm2png.main(['testPPMAin']))
+        _redirect_io(None, o, lambda: png.pnm2png.main(['testPPMASCIIin', s]))
         r = png.Reader(bytes=o.getvalue())
         r.read()
         self.assertEqual(r.greyscale, False)
         # bitdepth 4 could be saved in RGB only as sBIT
         self.assertEqual(r.sbit, strtobytes('\x04\x04\x04'))
+
+    def testPPMAlphain(self):
+        """Test that the command line tool can read PPM with separate alpha."""
+        s = os.path.join(os.path.dirname(__file__),
+                         'testfiles', 'blackbuck.ppm')
+        sa = os.path.join(os.path.dirname(__file__),
+                         'testfiles', 'blackbuck_mask.pgm')
+        o = BytesIO()
+        _redirect_io(None, o, lambda: png.pnm2png.main(['testPPMAin', s,
+                                                        '-a', sa]))
+        r = png.Reader(bytes=o.getvalue())
+        r.read()
+        self.assertEqual(r.greyscale, False)
+        self.assertEqual(r.alpha, True)
 
     def testPAMin(self):
         """Test that the command line tool can read PAM file."""
