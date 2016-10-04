@@ -49,6 +49,7 @@ except ImportError:
 
 import png
 import png.pnm2png
+import png.plan9topng
 import pngsuite
 import sys
 
@@ -1073,6 +1074,20 @@ class CliTest(unittest.TestCase):
                   [2, 3, 0]]
         meta = dict(alpha=False, greyscale=True, bitdepth=2, planes=1)
         png.pnm2png.write_pnm(o, 3, 3, pixels, meta)
+
+    def testPlan9(self):
+        """Test that the plan9topng tool correctly read Plan9 files."""
+        s = os.path.join(os.path.dirname(__file__),
+                         'testfiles', 'right.bit')
+        o = BytesIO()
+        _redirect_io(None, o, lambda: png.plan9topng.main(['testPlan9', s]))
+        r = png.Reader(bytes=o.getvalue())
+        pixel9, meta9 = r.read()[2:]
+        r_ref = png.Reader(filename=os.path.join(os.path.dirname(__file__),
+                                                 'testfiles', 'glenda.png'))
+        pixel_ref, meta_ref = r_ref.read()[2:]
+        self.assertEqual(meta9, meta_ref)
+        self.assertEqual(list(pixel9), list(pixel_ref))
 
 try:
     import numpy
