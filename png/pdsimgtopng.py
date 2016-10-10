@@ -5,42 +5,45 @@
 
 import re
 import struct
+try:
+    exec("from . import png", globals(), locals())
+except (SyntaxError, ValueError):
+    # On Python < 2.5 relative import cause syntax error
+    # Also works when running outside of package
+    import png
 
-import png
-
-class FormatError(Exception):
-    pass
 
 def pdskey(s, k):
-    """Lookup key `k` in string `s`.  Returns value (as a string), or
-    raises exception if not found.
     """
+    Lookup key `k` in string `s`.
 
+    Returns value (as a string), or raises exception if not found.
+    """
     assert re.match(r' *\^?[:\w]+$', k)
-    safere = '^' + re.escape(k) +r' *= *(\w+)'
+    safere = png.strtobytes('^' + re.escape(k) + r' *= *(\w+)')
     m = re.search(safere, s, re.MULTILINE)
     if not m:
-        raise FormatError("Can't find %s." % k)
+        raise png.FormatError("Can't find %s." % k)
     return m.group(1)
 
+
 def img(inp):
-    """Open the PDS IMG file `inp` and return (*pixels*, *info*).
-    *pixels* is an iterator over the rows, *info* is the information
-    dictionary.
     """
+    Open the PDS IMG file `inp` and return (*pixels*, *info*).
 
-    err = __import__('sys').stderr
-
+    *pixels* is an iterator over the rows,
+    *info* is the information dictionary.
+    """
     consumed = 1024
 
     s = inp.read(consumed)
     record_type = pdskey(s, 'RECORD_TYPE')
-    if record_type != 'FIXED_LENGTH':
-        raise FormatError(
+    if record_type != png.strtobytes('FIXED_LENGTH'):
+        raise png.FormatError(
           "Can only deal with FIXED_LENGTH record type (found %s)" %
-            record_type)
-    record_bytes = int(pdskey(s,'RECORD_BYTES'))
-    file_records = int(pdskey(s, 'FILE_RECORDS'))
+          record_type)
+    record_bytes = int(pdskey(s, 'RECORD_BYTES'))
+    # file_records = int(pdskey(s, 'FILE_RECORDS'))
     label_records = int(pdskey(s, 'LABEL_RECORDS'))
     remaining = label_records * record_bytes - consumed
     s += inp.read(remaining)
@@ -60,40 +63,51 @@ def img(inp):
     width = int(pdskey(s, '  LINE_SAMPLES'))
     sample_type = pdskey(s, '  SAMPLE_TYPE')
     sample_bits = int(pdskey(s, '  SAMPLE_BITS'))
-    # For Messenger MDIS, SAMPLE_BITS is reported as 16, but only values
+    # TODO: For Messenger MDIS, SAMPLE_BITS is reported as 16, but only values
     # from 0 ot 4095 are used.
-    bitdepth = 12
-    if sample_type == 'MSB_UNSIGNED_INTEGER':
+    bitdepth = sample_bits
+    if bitdepth == 16 and\
+            sample_type == png.strtobytes('MSB_UNSIGNED_INTEGER'):
         fmt = '>H'
+    elif bitdepth == 8:
+        fmt = '@B'
     else:
-        raise 'Unknown sample type: %s.' % sample_type
-    sample_bytes = (1,2)[bitdepth > 8]
+        raise png.FormatError('Unknown sample type: %s.' % sample_type)
+    sample_bytes = (1, 2)[bitdepth > 8]
     row_bytes = sample_bytes * width
     fmt = fmt[:1] + str(width) + fmt[1:]
+
     def rowiter():
         for y in range(height):
             yield struct.unpack(fmt, inp.read(row_bytes))
     info = dict(greyscale=True, alpha=False, bitdepth=bitdepth,
-      size=(width,height), gamma=1.0)
+      size=(width, height), gamma=1.0)
     return rowiter(), info
 
 
 def main(argv=None):
     import sys
-
+    if sys.platform == "win32":
+        import msvcrt, os
+        try:
+            msvcrt.setmode(sys.stdout.fileno(), os.O_BINARY)
+        except:
+            pass
     if argv is None:
         argv = sys.argv
     argv = argv[1:]
     arg = argv
     if len(arg) >= 1:
         f = open(arg[0], 'rb')
+        should_close = True
     else:
         f = sys.stdin
-    pixels,info = img(f)
+        should_close = False
+    pixels, info = img(f)
     w = png.Writer(**info)
     w.write(sys.stdout, pixels)
+    if should_close:
+        f.close()
 
 if __name__ == '__main__':
     main()
-
-

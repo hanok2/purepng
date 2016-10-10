@@ -50,6 +50,7 @@ except ImportError:
 import png
 import png.pnm2png
 import png.plan9topng
+import png.pdsimgtopng
 import pngsuite
 import sys
 
@@ -1088,6 +1089,26 @@ class CliTest(unittest.TestCase):
         pixel_ref, meta_ref = r_ref.read()[2:]
         self.assertEqual(meta9, meta_ref)
         self.assertEqual(list(pixel9), list(pixel_ref))
+
+    def testPdsimg_Messenger(self):
+        """Test that the pdsimgtopng tool correctly read img of Messenger."""
+        s = os.path.join(os.path.dirname(__file__),
+                         'testfiles', 'EN0001426030M.IMG')
+        o = BytesIO()
+        _redirect_io(None, o, lambda: png.pdsimgtopng.main(['testImg1', s]))
+        r = png.Reader(bytes=o.getvalue())
+        meta = r.read()[3]
+        self.assertEqual(meta['greyscale'], True)
+
+    def testPdsimg_8bit(self):
+        """Test that the pdsimgtopng tool correctly read some test img."""
+        s = os.path.join(os.path.dirname(__file__),
+                         'testfiles', 'pds.img')
+        o = BytesIO()
+        _redirect_io(None, o, lambda: png.pdsimgtopng.main(['testImg1', s]))
+        r = png.Reader(bytes=o.getvalue())
+        meta = r.read()[3]
+        self.assertEqual(meta['greyscale'], True)
 
 try:
     import numpy
