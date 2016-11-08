@@ -715,7 +715,6 @@ class Writer(object):
                  chunk_limit=2 ** 20,
                  filter_type=None,
                  icc_profile=None,
-                 icc_profile_name="ICC Profile",
                  **kwargs
                  ):
         """
@@ -749,9 +748,8 @@ class Writer(object):
         filter_type
           Enable and specify PNG filter
         icc_profile
-          Write ICC Profile
-        icc_profile_name
-          Name for ICC Profile
+            tuple of (`name`, `databytes`) or just data bytes 
+            to write ICC Profile
 
         Extra keywords:
             text
@@ -970,12 +968,15 @@ class Writer(object):
         self.width = width
         self.height = height
         self.gamma = gamma
-        self.icc_profile = icc_profile
         if icc_profile:
-            if not icc_profile_name:
-                raise Error("ICC profile shoud have a name")
+            if 'icc_profile_name' in kwargs:
+                warnings.warn("Use tuple (`name`, `data`) to provide"
+                              " ICC Profile name", DeprecationWarning)
+                self.set_icc_profile(icc_profile, kwargs['icc_profile_name'])
             else:
-                self.icc_profile_name = strtobytes(icc_profile_name)
+                self.set_icc_profile(icc_profile)
+        else:
+            self.icc_profile = None
         self.greyscale = bool(greyscale)
         self.alpha = bool(alpha)
         self.bitdepth = int(bitdepth)
@@ -989,6 +990,19 @@ class Writer(object):
 
         self.color_planes = (3, 1)[self.greyscale or colormap]
         self.planes = self.color_planes + self.alpha
+
+    def set_icc_profile(self, profile=None, name='ICC Profile'):
+        if isinstance(profile, basestring):
+            icc_profile = (name, profile)
+        # TODO: more check
+        else:
+            icc_profile = profile
+
+        if not icc_profile[0]:
+            raise Error("ICC profile should have a name")
+        else:
+            icc_profile[0] = strtobytes(icc_profile[0])
+        self.icc_profile = icc_profile
 
     def set_text(self, text=None, **kwargs):
         """Add textual information.
@@ -1144,9 +1158,9 @@ class Writer(object):
         # http://www.w3.org/TR/PNG/#11iCCP
         if self.icc_profile is not None:
             write_chunk(outfile, 'iCCP',
-                        self.icc_profile_name + zerobyte +
+                        self.icc_profile[0] + zerobyte +
                         zerobyte +
-                        zlib.compress(self.icc_profile, self.compression))
+                        zlib.compress(self.icc_profile[1], self.compression))
 
     def __write_text(self, outfile):
         """
@@ -2423,11 +2437,12 @@ class Reader(object):
 
     def _process_iCCP(self, data):
         i = data.index(zerobyte)
-        self.icc_profile_name = data[:i]
+        icc_profile_name = data[:i]
         compression = data[i:i + 1]
         # TODO: Raise FormatError
         assert (compression == zerobyte)
-        self.icc_profile = zlib.decompress(data[i + 2:])
+        icc_profile_string = zlib.decompress(data[i + 2:])
+        self.icc_profile = (icc_profile_name, icc_profile_string)
 
     def _process_sBIT(self, data):
         self.sbit = data
@@ -2566,7 +2581,7 @@ class Reader(object):
             meta[attr] = getattr(self, attr)
         meta['size'] = (self.width, self.height)
         for attr in ('gamma', 'transparent', 'background', 'last_mod_time',
-                     'icc_profile', 'icc_profile_name', 'resolution', 'text',
+                     'icc_profile', 'resolution', 'text',
                      'rendering_intent', 'white_point', 'rgb_points'):
             a = getattr(self, attr, None)
             if a is not None:

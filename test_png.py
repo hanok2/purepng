@@ -51,6 +51,7 @@ import png
 import png.pnm2png
 import png.plan9topng
 import png.pdsimgtopng
+import png.iccp
 import pngsuite
 import sys
 
@@ -1109,6 +1110,20 @@ class CliTest(unittest.TestCase):
         r = png.Reader(bytes=o.getvalue())
         meta = r.read()[3]
         self.assertEqual(meta['greyscale'], True)
+
+    def testICCPexp(self):
+        """Test exporting ICC Profile with iccp tool"""
+        pngsuite.png["ff99ff_iccp"].seek(0)
+        o = BytesIO()
+        _redirect_io(pngsuite.png["ff99ff_iccp"], o,
+                     lambda: png.iccp.main(['iccpexp', '-o-']))
+        s = os.path.join(os.path.dirname(__file__),
+                         'testfiles', 'gamma1.icc')
+        ref = open(s, 'rb')
+        o.seek(0)
+        self.assertEqual(o.read(-1), ref.read(-1))
+        ref.close()
+
 
 try:
     import numpy

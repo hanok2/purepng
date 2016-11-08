@@ -1,62 +1,62 @@
 #!/usr/bin/env python
-# $URL$
-# $Rev$
+"""
+International Color Consortium Profile
 
-# iccp
-#
-# International Color Consortium Profile
-#
-# Tools for manipulating ICC profiles.
-#
-# An ICC profile can be extracted from a PNG image (iCCP chunk).
-#
-#
-# Non-standard ICCP tags.
-#
-# Apple use some (widespread but) non-standard tags.  These can be
-# displayed in Apple's ColorSync Utility.
-# - 'vcgt' (Video Card Gamma Tag).  Table to load into video
-#    card LUT to apply gamma.
-# - 'ndin' Apple display native information.
-# - 'dscm' Apple multi-localized description strings.
-# - 'mmod' Apple display make and model information.
-# 
+Tools for manipulating ICC profiles.
 
-# References
-#
-# [ICC 2001] ICC Specification ICC.1:2001-04 (Profile version 2.4.0)
-# [ICC 2004] ICC Specification ICC.1:2004-10 (Profile version 4.2.0.0)
+An ICC profile can be extracted from a PNG image (iCCP chunk).
 
+
+Non-standard ICCP tags.
+
+Apple use some (widespread but) non-standard tags.  These can be
+displayed in Apple's ColorSync Utility.
+- 'vcgt' (Video Card Gamma Tag).  Table to load into video
+   card LUT to apply gamma.
+- 'ndin' Apple display native information.
+- 'dscm' Apple multi-localized description strings.
+- 'mmod' Apple display make and model information.
+
+
+References
+[ICC 2001] ICC Specification ICC.1:2001-04 (Profile version 2.4.0)
+[ICC 2004] ICC Specification ICC.1:2004-10 (Profile version 4.2.0.0)
+"""
 import struct
+import warnings
 
-import png
+try:
+    exec("from . import png", globals(), locals())
+except (SyntaxError, ValueError):
+    # On Python < 2.5 relative import cause syntax error
+    # Also works when running outside of package
+    import png
 
-class FormatError(Exception):
-    pass
 
-class Profile:
+class Profile(object):
+
     """An International Color Consortium Profile (ICC Profile)."""
 
     def __init__(self):
         self.rawtagtable = None
         self.rawtagdict = {}
         self.d = dict()
+        self.name = None
 
     def fromFile(self, inp, name='<unknown>'):
-
         # See [ICC 2004]
         profile = inp.read(128)
         if len(profile) < 128:
-            raise FormatError("ICC Profile is too short.")
+            raise png.FormatError("ICC Profile is too short.")
         size, = struct.unpack('>L', profile[:4])
-        profile += inp.read(d['size'] - len(profile))
+        profile += inp.read(size - len(profile))
         return self.fromString(profile, name)
 
     def fromString(self, profile, name='<unknown>'):
         self.d = dict()
         d = self.d
         if len(profile) < 128:
-            raise FormatError("ICC Profile is too short.")
+            raise png.FormatError("ICC Profile is too short.")
         d.update(
           zip(['size', 'preferredCMM', 'version',
                'profileclass', 'colourspace', 'pcs'],
@@ -64,7 +64,7 @@ class Profile:
         if len(profile) < d['size']:
             warnings.warn(
               'Profile size declared to be %d, but only got %d bytes' %
-                (d['size'], len(profile)))
+              (d['size'], len(profile)))
         d['version'] = '%08x' % d['version']
         d['created'] = readICCdatetime(profile[24:36])
         d.update(
@@ -81,15 +81,15 @@ class Profile:
         d['ntags'] = ntags
         fmt = '4s2L' * ntags
         # tag table
-        tt = struct.unpack('>' + fmt, profile[132:132+12*ntags])
+        tt = struct.unpack('>' + fmt, profile[132:132 + 12 * ntags])
         tt = group(tt, 3)
 
         # Could (should) detect 2 or more tags having the same sig.  But
         # we don't.  Two or more tags with the same sig is illegal per
         # the ICC spec.
-        
+
         # Convert (sig,offset,size) triples into (sig,value) pairs.
-        rawtag = map(lambda x: (x[0], profile[x[1]:x[1]+x[2]]), tt)
+        rawtag = map(lambda x: (x[0], profile[x[1]:x[1] + x[2]]), tt)
         self.rawtagtable = rawtag
         self.rawtagdict = dict(rawtag)
         tag = dict()
@@ -102,14 +102,16 @@ class Profile:
             if v is not None:
                 tag[sig] = v
         self.tag = tag
+        self.name = name
         return self
 
     def greyInput(self):
-        """Adjust ``self.d`` dictionary for greyscale input device.
-        ``profileclass`` is 'scnr', ``colourspace`` is 'GRAY', ``pcs``
-        is 'XYZ '.
         """
+        Adjust ``self.d`` dictionary for greyscale input device.
 
+        ``profileclass`` is 'scnr', ``colourspace`` is 'GRAY',
+        ``pcs`` is 'XYZ '.
+        """
         self.d.update(dict(profileclass='scnr',
           colourspace='GRAY', pcs='XYZ '))
         return self
@@ -117,11 +119,10 @@ class Profile:
     def maybeAddDefaults(self):
         if self.rawtagdict:
             return
-        self._addTags(
-          cprt='Copyright unknown.',
-          desc='created by $URL$ $Rev$',
-          wtpt=D50(),
-          )
+        self._addTags(cprt='Copyright unknown.',
+                      desc='created by $URL$ $Rev$',
+                      wtpt=D50(),
+                      )
 
     def addTags(self, **k):
         self.maybeAddDefaults()
@@ -129,7 +130,6 @@ class Profile:
 
     def _addTags(self, **k):
         """Helper for :meth:`addTags`."""
-
         for tag, thing in k.items():
             if not isinstance(thing, (tuple, list)):
                 thing = (thing,)
@@ -139,7 +139,6 @@ class Profile:
 
     def write(self, out):
         """Write ICC Profile to the file."""
-
         if not self.rawtagtable:
             self.rawtagtable = self.rawtagdict.items()
         tags = tagblock(self.rawtagtable)
@@ -181,7 +180,7 @@ class Profile:
                         pcsilluminant=encodefuns()['XYZ'](*D50()),
                         creator=z,
                         )
-        for k,v in defaults.items():
+        for k, v in defaults.items():
             defaultkey(self.d, k, v)
 
         hl = map(self.d.__getitem__,
@@ -195,6 +194,7 @@ class Profile:
         out.write(struct.pack('>L4sL4s4s4s12s4s4sL4sLQL12s4s', size, *hl))
         out.write('\x00' * 44)
         return self
+
 
 def encodefuns():
     """Returns a dictionary mapping ICC type signature sig to encoding
@@ -230,17 +230,17 @@ def encodefuns():
         """
 
         if f is None:
-            return struct.pack('>L',  0)
+            return struct.pack('>L', 0)
         try:
             if float(f) == f:
-                return struct.pack('>LH', 1, int(round(f*2**8)))
+                return struct.pack('>LH', 1, int(round(f * 2 ** 8)))
         except (TypeError, ValueError):
             pass
         assert n >= 2
         table = []
-        M = float(n-1)
+        M = float(n - 1)
         for i in range(n):
-            x = i/M
+            x = i / M
             table.append(int(round(f(x) * 65535)))
         return struct.pack('>L%dH' % n, n, *table)
 
@@ -253,7 +253,7 @@ def encodefuns():
 # Most tags can only have one or a few tag types.
 # When encoding, we associate a default tag type with each tag so that
 # the encoding is implicit.
-defaulttagtype=dict(
+defaulttagtype = dict(
   A2B0='mft1',
   A2B1='mft1',
   A2B2='mft1',
@@ -303,31 +303,36 @@ defaulttagtype=dict(
   view='view',
 )
 
-def encode(tsig, *l):
-    """Encode a Python value as an ICC type.  `tsig` is the type
-    signature to (the first 4 bytes of the encoded value, see [ICC 2004]
-    section 10.
-    """
 
+def encode(tsig, *l):
+    """
+    Encode a Python value as an ICC type.
+
+    `tsig` is the type signature to (the first 4 bytes of
+    the encoded value, see [ICC 2004] section 10.
+    """
     fun = encodefuns()
     if tsig not in fun:
         raise "No encoder for type %r." % tsig
     v = fun[tsig](*l)
     # Padd tsig out with spaces.
     tsig = (tsig + '   ')[:4]
-    return tsig + '\x00'*4 + v
+    return tsig + '\x00' * 4 + v
+
 
 def tagblock(tag):
-    """`tag` should be a list of (*signature*, *element*) pairs, where
+    """
+    Serialize block of tags
+
+    `tag` should be a list of (*signature*, *element*) pairs, where
     *signature* (the key) is a length 4 string, and *element* is the
     content of the tag element (another string).
-    
+
     The entire tag block (consisting of first a table and then the
     element data) is constructed and returned as a string.
     """
-
     n = len(tag)
-    tablelen = 12*n
+    tablelen = 12 * n
 
     # Build the tag table in two parts.  A list of 12-byte tags, and a
     # string of element data.  Offset is the offset from the start of
@@ -339,39 +344,23 @@ def tagblock(tag):
     table = ''
     # The element data
     element = ''
-    for k,v in tag:
+    for k, v in tag:
         table += struct.pack('>4s2L', k, offset + len(element), len(v))
         element += v
     return struct.pack('>L', n) + table + element
 
-def iccp(out, inp):
-    profile = Profile().fromString(*profileFromPNG(inp))
-    print >>out, profile.d
-    print >>out, map(lambda x: x[0], profile.rawtagtable)
-    print >>out, profile.tag
-
-def profileFromPNG(inp):
-    """Extract profile from PNG file.  Return (*profile*, *name*)
-    pair."""
-    r = png.Reader(file=inp)
-    _,chunk = r.chunk('iCCP')
-    i = chunk.index('\x00')
-    name = chunk[:i]
-    compression = chunk[i+1]
-    assert compression == chr(0)
-    profile = chunk[i+2:].decode('zlib')
-    return profile, name
 
 def iccpout(out, inp):
     """Extract ICC Profile from PNG file `inp` and write it to
     the file `out`."""
+    out.write(png.Reader(file=inp).read()[3]['icc_profile'][1])
 
-    out.write(profileFromPNG(inp)[0])
 
 def fs15f16(x):
     """Convert float to ICC s15Fixed16Number (as a Python ``int``)."""
 
-    return int(round(x * 2**16))
+    return int(round(x * 2 ** 16))
+
 
 def D50():
     """Return D50 illuminant as an (X,Y,Z) triple."""
@@ -381,58 +370,61 @@ def D50():
 
 
 def writeICCdatetime(t=None):
-    """`t` should be a gmtime tuple (as returned from
-    ``time.gmtime()``).  If not supplied, the current time will be used.
+    """
+    `t` should be a gmtime tuple (as returned from ``time.gmtime()``).
+
+    If not supplied, the current time will be used.
     Return an ICC dateTimeNumber in a 12 byte string.
     """
-
     import time
     if t is None:
         t = time.gmtime()
     return struct.pack('>6H', *t[:6])
 
+
 def readICCdatetime(s):
     """Convert from 12 byte ICC representation of dateTimeNumber to
     ISO8601 string. See [ICC 2004] 5.1.1"""
-
     return '%04d-%02d-%02dT%02d:%02d:%02dZ' % struct.unpack('>6H', s)
+
 
 def readICCXYZNumber(s):
     """Convert from 12 byte ICC representation of XYZNumber to (x,y,z)
     triple of floats.  See [ICC 2004] 5.1.11"""
-
     return s15f16l(s)
+
 
 def s15f16l(s):
     """Convert sequence of ICC s15Fixed16 to list of float."""
+
     # Note: As long as float has at least 32 bits of mantissa, all
     # values are preserved.
-    n = len(s)//4
+    n = len(s) // 4
     t = struct.unpack('>%dl' % n, s)
     return map((2**-16).__mul__, t)
+
 
 # Several types and their byte encodings are defined by [ICC 2004]
 # section 10.  When encoded, a value begins with a 4 byte type
 # signature.  We use the same 4 byte type signature in the names of the
 # Python functions that decode the type into a Pythonic representation.
-
 def ICCdecode(s):
     """Take an ICC encoded tag, and dispatch on its type signature
     (first 4 bytes) to decode it into a Python value.  Pair (*sig*,
     *value*) is returned, where *sig* is a 4 byte string, and *value* is
     some Python value determined by the content and type.
     """
-
     sig = s[0:4].strip()
-    f=dict(text=RDtext,
-           XYZ=RDXYZ,
-           curv=RDcurv,
-           vcgt=RDvcgt,
-           sf32=RDsf32,
-           )
+    f = dict(text=RDtext,
+             XYZ=RDXYZ,
+             curv=RDcurv,
+             vcgt=RDvcgt,
+             sf32=RDsf32,
+             )
     if sig not in f:
         return None
     return (sig, f[sig](s))
+
 
 def RDXYZ(s):
     """Convert ICC XYZType to rank 1 array of trimulus values."""
@@ -441,41 +433,51 @@ def RDXYZ(s):
     assert s[0:4] == 'XYZ '
     return readICCXYZNumber(s[8:])
 
+
 def RDsf32(s):
     """Convert ICC s15Fixed16ArrayType to list of float."""
+
     # See [ICC 2004] 10.18
     assert s[0:4] == 'sf32'
     return s15f16l(s[8:])
 
+
 def RDmluc(s):
-    """Convert ICC multiLocalizedUnicodeType.  This types encodes
-    several strings together with a language/country code for each
-    string.  A list of (*lc*, *string*) pairs is returned where *lc* is
-    the 4 byte language/country code, and *string* is the string
-    corresponding to that code.  It seems unlikely that the same
+    """
+    Convert ICC multiLocalizedUnicodeType.
+
+    This types encodes several strings together with a language/country
+    code for each string.  A list of (*lc*, *string*) pairs is returned
+    where *lc* is the 4 byte language/country code, and *string* is the
+    string corresponding to that code.  It seems unlikely that the same
     language/country code will appear more than once with different
-    strings, but the ICC standard does not prohibit it."""
+    strings, but the ICC standard does not prohibit it.
+    """
     # See [ICC 2004] 10.13
     assert s[0:4] == 'mluc'
-    n,sz = struct.unpack('>2L', s[8:16])
+    n, sz = struct.unpack('>2L', s[8:16])
     assert sz == 12
     record = []
     for i in range(n):
-        lc,l,o = struct.unpack('4s2L', s[16+12*n:28+12*n])
-        record.append(lc, s[o:o+l])
+        lc, l, o = struct.unpack('4s2L', s[16 + 12 * n:28 + 12 * n])
+        record.append(lc, s[o:o + l])
     # How are strings encoded?
     return record
 
+
 def RDtext(s):
     """Convert ICC textType to Python string."""
+
     # Note: type not specified or used in [ICC 2004], only in older
     # [ICC 2001].
     # See [ICC 2001] 6.5.18
     assert s[0:4] == 'text'
     return s[8:-1]
 
+
 def RDcurv(s):
     """Convert ICC curveType."""
+
     # See [ICC 2001] 6.5.3
     assert s[0:4] == 'curv'
     count, = struct.unpack('>L', s[8:12])
@@ -483,27 +485,31 @@ def RDcurv(s):
         return dict(gamma=1)
     table = struct.unpack('>%dH' % count, s[12:])
     if count == 1:
-        return dict(gamma=table[0]*2**-8)
+        return dict(gamma=table[0] * 2 ** -8)
     return table
+
 
 def RDvcgt(s):
     """Convert Apple CMVideoCardGammaType."""
+
     # See
-    # http://developer.apple.com/documentation/GraphicsImaging/Reference/ColorSync_Manager/Reference/reference.html#//apple_ref/c/tdef/CMVideoCardGammaType
+    # http://developer.apple.com/documentation/GraphicsImaging/Reference/
+    #         ColorSync_Manager/Reference/reference.html#//apple_ref/c/
+    #         tdef/CMVideoCardGammaType
     assert s[0:4] == 'vcgt'
     tagtype, = struct.unpack('>L', s[8:12])
     if tagtype != 0:
         return s[8:]
     if tagtype == 0:
         # Table.
-        channels,count,size = struct.unpack('>3H', s[12:18])
+        channels, count, size = struct.unpack('>3H', s[12:18])
         if size == 1:
             fmt = 'B'
         elif size == 2:
             fmt = 'H'
         else:
             return s[8:]
-        l = len(s[18:])//size
+        l = len(s[18:]) // size
         t = struct.unpack('>%d%s' % (l, fmt), s[18:])
         t = group(t, count)
         return size, t
@@ -513,7 +519,7 @@ def RDvcgt(s):
 def group(s, n):
     # See
     # http://www.python.org/doc/2.6/library/functions.html#zip
-    return zip(*[iter(s)]*n)
+    return zip(*[iter(s)] * n)
 
 
 def main(argv=None):
@@ -522,16 +528,20 @@ def main(argv=None):
     if argv is None:
         argv = sys.argv
     argv = argv[1:]
-    opt,arg = getopt(argv, 'o:')
+    opt, arg = getopt(argv, 'o:')
     if len(arg) > 0:
         inp = open(arg[0], 'rb')
     else:
         inp = sys.stdin
-    for o,v in opt:
+    for o, v in opt:
         if o == '-o':
-            f = open(v, 'wb')
-            return iccpout(f, inp)
-    return iccp(sys.stdout, inp)
+            if v in ('-', 'stdout'):
+                f = sys.stdout
+            else:
+                f = open(v, 'wb')
+            iccpout(f, inp)
+            if v not in ('-', 'stdout'):
+                f.close()
 
 if __name__ == '__main__':
     main()
