@@ -12,13 +12,14 @@ try:
     exec("from .png import array", globals(), locals())
 except (SyntaxError, ValueError):
     # On Python < 2.5 relative import cause syntax error
+    # Also works when running outside of package
     import png
     from png import array
 try:
     bytearray
     bytes
 except NameError:
-    # bytearray missed on Python < 2.6 where ralative import supported
+    # bytearray missed on Python < 2.6 where relative import supported
     from png import bytearray
     bytes = str
 
@@ -402,8 +403,13 @@ def main(argv):
             arows = file_scanlines(apgmfile, width, height, 1, bitdepth)
             merged = png.MergedPlanes(rows, depth, arows, 1, bitdepth, width)
             writer.write(outfile, merged)
+            apgmfile.close()
         else:
             writer.write(outfile, rows)
+    if infilename != '-':
+        # if open - then close
+        infile.close()
+
 
 if __name__ == '__main__':
     main(sys.argv)

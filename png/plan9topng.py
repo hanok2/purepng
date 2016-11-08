@@ -307,7 +307,10 @@ def main(argv=None):
     if len(argv) <= 1:
         return convert(sys.stdin)
     else:
-        return convert(open(argv[1], 'rb'))
+        infile = open(argv[1], 'rb')
+        res = convert(infile)
+        infile.close()
+        return res
 
 if __name__ == '__main__':
     sys.exit(main())

@@ -993,7 +993,7 @@ class Writer(object):
 
     def set_icc_profile(self, profile=None, name='ICC Profile'):
         if isinstance(profile, basestring):
-            icc_profile = (name, profile)
+            icc_profile = [name, profile]
         # TODO: more check
         else:
             icc_profile = profile
