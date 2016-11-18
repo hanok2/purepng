@@ -350,12 +350,6 @@ def tagblock(tag):
     return struct.pack('>L', n) + table + element
 
 
-def iccpout(out, inp):
-    """Extract ICC Profile from PNG file `inp` and write it to
-    the file `out`."""
-    out.write(png.Reader(file=inp).read()[3]['icc_profile'][1])
-
-
 def fs15f16(x):
     """Convert float to ICC s15Fixed16Number (as a Python ``int``)."""
 
@@ -522,26 +516,54 @@ def group(s, n):
     return zip(*[iter(s)] * n)
 
 
+def iccpout(out, inp, **kwargs):
+    """Extract ICC Profile from PNG file `inp` to the file `out`."""
+    out.write(png.Reader(file=inp).read()[3]['icc_profile'][1])
+
+
+def iccpadd(inp, out, addfile, **kwargs):
+    """Add ICC Profile to png file and write result to file `out`"""
+    iccfile = open(addfile, 'rb')
+    pix, meta = png.Reader(file=inp).read()[2:]
+    meta['icc_profile'] = iccfile.read()
+    iccfile.close()
+    w = png.Writer(**meta)
+    w.write(out, pix)
+
+
 def main(argv=None):
     import sys
     from getopt import getopt
+
+    def funcmode(mode):
+        """Determine function by mode"""
+        if mode == 'export':
+            return iccpout
+        elif mode == 'add':
+            return iccpadd
+
     if argv is None:
         argv = sys.argv
     argv = argv[1:]
-    opt, arg = getopt(argv, 'o:')
+    opt, arg = getopt(argv, 'o:m:a:')
+    cfg = dict(mode='export')
     if len(arg) > 0:
-        inp = open(arg[0], 'rb')
+        cfg['inp'] = open(arg[0], 'rb')
     else:
-        inp = sys.stdin
+        cfg['inp'] = sys.stdin
     for o, v in opt:
         if o == '-o':
             if v in ('-', 'stdout'):
-                f = sys.stdout
+                cfg['out'] = sys.stdout
             else:
-                f = open(v, 'wb')
-            iccpout(f, inp)
+                cfg['out'] = open(v, 'wb')
+            funcmode(cfg['mode'])(**cfg)
             if v not in ('-', 'stdout'):
-                f.close()
+                cfg['out'].close()
+        elif o == '-m':
+            cfg['mode'] = v
+        elif o == '-a':
+            cfg['addfile'] = v
 
 if __name__ == '__main__':
     main()

@@ -1124,6 +1124,22 @@ class CliTest(unittest.TestCase):
         self.assertEqual(o.read(-1), ref.read(-1))
         ref.close()
 
+    def testICCPadd(self):
+        """Test adding ICC Profile with iccp tool"""
+        s = os.path.join(os.path.dirname(__file__),
+                         'testfiles', 'glenda.png')
+        si = os.path.join(os.path.dirname(__file__),
+                         'testfiles', 'gamma1.icc')
+        o = BytesIO()
+        _redirect_io(None, o,
+                     lambda: png.iccp.main(['iccpexp', '-madd',
+                                            '-a' + si, '-o-', s]))
+        r = png.Reader(bytes=o.getvalue())
+        meta = r.read()[3]
+        ref = open(si, 'rb')
+        o.seek(0)
+        self.assertEqual(meta['icc_profile'][1], ref.read(-1))
+        ref.close()
 
 try:
     import numpy

@@ -992,7 +992,7 @@ class Writer(object):
         self.planes = self.color_planes + self.alpha
 
     def set_icc_profile(self, profile=None, name='ICC Profile'):
-        if isinstance(profile, basestring):
+        if isinstance(profile, (basestring, bytes)):
             icc_profile = [name, profile]
         # TODO: more check
         else:
@@ -1000,7 +1000,7 @@ class Writer(object):
 
         if not icc_profile[0]:
             raise Error("ICC profile should have a name")
-        else:
+        elif not isinstance(icc_profile[0], bytes):
             icc_profile[0] = strtobytes(icc_profile[0])
         self.icc_profile = icc_profile
 
@@ -1157,10 +1157,14 @@ class Writer(object):
                         struct.pack("!L", int(round(self.gamma * 1e5))))
         # http://www.w3.org/TR/PNG/#11iCCP
         if self.icc_profile is not None:
+            if self.compression is None or self.compression == -1:
+                comp_level = zlib.Z_DEFAULT_COMPRESSION
+            else:
+                comp_level = self.compression
             write_chunk(outfile, 'iCCP',
                         self.icc_profile[0] + zerobyte +
                         zerobyte +
-                        zlib.compress(self.icc_profile[1], self.compression))
+                        zlib.compress(self.icc_profile[1], comp_level))
 
     def __write_text(self, outfile):
         """
