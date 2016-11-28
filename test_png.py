@@ -1152,6 +1152,17 @@ class CliTest(unittest.TestCase):
         self.assertEqual(meta['icc_profile'][1], ref.read(-1))
         ref.close()
 
+    def testICCPgrey(self):
+        """Test constructing grey ICC Profile with iccp tool"""
+        o = BytesIO()
+        _redirect_io(None, o,
+                     lambda: png.iccp.main(['iccpgrey', '-mmkgrey',
+                                            '-o-']))
+        o.seek(0)
+        r = png.iccp.Profile()
+        r.fromFile(o)
+        self.assertEqual(r.d['colourspace'], png.strtobytes('GRAY'))
+
 try:
     import numpy
 

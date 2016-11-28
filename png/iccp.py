@@ -191,16 +191,17 @@ class Profile(object):
         for k, v in defaults.items():
             defaultkey(self.d, k, v)
 
-        hl = map(self.d.__getitem__,
-                 ['preferredCMM', 'version', 'profileclass', 'colourspace',
-                  'pcs', 'created', 'acsp', 'platform', 'flag',
-                  'manufacturer', 'model', 'deviceattributes', 'intent',
-                  'pcsilluminant', 'creator'])
+        hl = [self.d[k] for k in
+              ('preferredCMM', 'version', 'profileclass', 'colourspace',
+               'pcs', 'created', 'acsp', 'platform', 'flag',
+               'manufacturer', 'model', 'deviceattributes', 'intent',
+               'pcsilluminant', 'creator')]
+        hl = [png.strtobytes(it) if isinstance(it, str) else it for it in hl]
         # Convert to struct.pack input
         hl[1] = int(hl[1], 16)
 
         out.write(struct.pack('>L4sL4s4s4s12s4s4sL4sLQL12s4s', size, *hl))
-        out.write('\x00' * 44)
+        out.write(png.zerobyte * 44)
         return self
 
 
@@ -219,10 +220,10 @@ def encodefuns():
         The ASCII part is filled in with the string `ascii`,
         the Unicode and ScriptCode parts are empty.
         """
-        ascii += '\x00'
+        ascii = png.strtobytes(ascii) + png.zerobyte
         l = len(ascii)
         return struct.pack('>L%ds2LHB67s' % l,
-                           l, ascii, 0, 0, 0, 0, '')
+                           l, ascii, 0, 0, 0, 0, png.strtobytes(''))
 
     def text(ascii):
         """Return textType [ICC 2001] 6.5.18."""
@@ -327,9 +328,9 @@ def encode(tsig, *l):
     if tsig not in encodefuncs:
         raise "No encoder for type %r." % tsig
     v = encodefuncs[tsig](*l)
-    # Padd tsig out with spaces.
-    tsig = (tsig + '   ')[:4]
-    return tsig + '\x00' * 4 + v
+    # Padd tsig out with spaces (and ensure it is bytes).
+    tsig = (png.strtobytes(tsig + '   '))[:4]
+    return tsig + png.zerobyte * 4 + v
 
 
 def tagblock(tag):
@@ -353,11 +354,11 @@ def tagblock(tag):
     # string so far).
     offset = 128 + tablelen + 4
     # The table.  As a string.
-    table = ''
+    table = png.strtobytes('')
     # The element data
-    element = ''
+    element = png.strtobytes('')
     for k, v in tag:
-        table += struct.pack('>4s2L', k, offset + len(element), len(v))
+        table += struct.pack('>4s2L', png.strtobytes(k), offset + len(element), len(v))
         element += v
     return struct.pack('>L', n) + table + element
 
@@ -373,6 +374,23 @@ def D50():
 
     # See [ICC 2001] A.1
     return (0.9642, 1.0000, 0.8249)
+
+
+def blackshift(m):
+    """
+    Produce a function to shift black (base) point.
+
+    Return a function that maps all values from [0.0,m] to 0, and maps
+    the range [m,1.0] into [0.0, 1.0] linearly.
+    """
+
+    m = float(m)
+
+    def f(x):
+        if x <= m:
+            return 0.0
+        return (x - m) / (1.0 - m)
+    return f
 
 
 def writeICCdatetime(t=None):
@@ -556,6 +574,13 @@ def iccpview(inp, out, **kwargs):
     out.writelines(map(png.strtobytes, analyze(profile)))
 
 
+def mkgrey(out, **kwargs):
+    it = Profile().greyInput()
+    black = kwargs.get('black', 0.07)
+    it.addTags(kTRC=blackshift(black))
+    it.write(out)
+
+
 def main(argv=None):
     import sys
     from getopt import getopt
@@ -568,6 +593,8 @@ def main(argv=None):
             return iccpadd
         elif mode == 'view':
             return iccpview
+        elif mode == 'mkgrey':
+            return mkgrey
 
     if argv is None:
         argv = sys.argv
