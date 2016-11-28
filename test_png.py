@@ -1124,6 +1124,17 @@ class CliTest(unittest.TestCase):
         self.assertEqual(o.read(-1), ref.read(-1))
         ref.close()
 
+    def testICCPread(self):
+        """Test ICC Profile read from png and parsed with iccp tool"""
+        pngsuite.png["ff99ff_iccp"].seek(0)
+        o = BytesIO()
+        _redirect_io(pngsuite.png["ff99ff_iccp"], o,
+                     lambda: png.iccp.main(['iccpexp', '-mview', '-o-']))
+        o.seek(0)
+        s = o.read()
+        res = (png.strtobytes("rTRC: ('curv', {'gamma': 1})") in s)
+        self.assertEqual(res, True)
+
     def testICCPadd(self):
         """Test adding ICC Profile with iccp tool"""
         s = os.path.join(os.path.dirname(__file__),

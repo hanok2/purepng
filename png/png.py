@@ -1158,7 +1158,7 @@ class Writer(object):
         # http://www.w3.org/TR/PNG/#11iCCP
         if self.icc_profile is not None:
             if self.compression is None or self.compression == -1:
-                comp_level = zlib.Z_DEFAULT_COMPRESSION
+                comp_level = 6  # zlib.Z_DEFAULT_COMPRESSION
             else:
                 comp_level = self.compression
             write_chunk(outfile, 'iCCP',

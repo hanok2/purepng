@@ -33,6 +33,12 @@ except (SyntaxError, ValueError):
     import png
 
 
+# Utils
+def group(s, n):
+    # See http://www.python.org/doc/2.6/library/functions.html#zip
+    return zip(*[iter(s)] * n)
+
+
 class Profile(object):
 
     """An International Color Consortium Profile (ICC Profile)."""
@@ -40,7 +46,8 @@ class Profile(object):
     def __init__(self):
         self.rawtagtable = None
         self.rawtagdict = {}
-        self.d = dict()
+        self.d = dict()  # Dict of basic properties
+        self.tag = dict()  # Dict of tags
         self.name = None
 
     def fromFile(self, inp, name='<unknown>'):
@@ -57,20 +64,20 @@ class Profile(object):
         d = self.d
         if len(profile) < 128:
             raise png.FormatError("ICC Profile is too short.")
-        d.update(
+        d.update(dict(
           zip(['size', 'preferredCMM', 'version',
                'profileclass', 'colourspace', 'pcs'],
-              struct.unpack('>L4sL4s4s4s', profile[:24])))
+              struct.unpack('>L4sL4s4s4s', profile[:24]))))
         if len(profile) < d['size']:
             warnings.warn(
               'Profile size declared to be %d, but only got %d bytes' %
               (d['size'], len(profile)))
         d['version'] = '%08x' % d['version']
         d['created'] = readICCdatetime(profile[24:36])
-        d.update(
+        d.update(dict(
           zip(['acsp', 'platform', 'flag', 'manufacturer', 'model'],
-              struct.unpack('>4s4s3L', profile[36:56])))
-        if d['acsp'] != 'acsp':
+              struct.unpack('>4s4s3L', profile[36:56]))))
+        if d['acsp'] != png.strtobytes('acsp'):
             warnings.warn('acsp field not present (not an ICC Profile?).')
         d['deviceattributes'] = profile[56:64]
         d['intent'], = struct.unpack('>L', profile[64:68])
@@ -89,12 +96,13 @@ class Profile(object):
         # the ICC spec.
 
         # Convert (sig,offset,size) triples into (sig,value) pairs.
-        rawtag = map(lambda x: (x[0], profile[x[1]:x[1] + x[2]]), tt)
+        rawtag = list(map(lambda x: (x[0], profile[x[1]:x[1] + x[2]]), tt))
         self.rawtagtable = rawtag
         self.rawtagdict = dict(rawtag)
         tag = dict()
         # Interpret the tags whose types we know about
         for sig, v in rawtag:
+            sig = png.bytestostr(sig)
             if sig in tag:
                 warnings.warn("Duplicate tag %r found.  Ignoring." % sig)
                 continue
@@ -197,20 +205,22 @@ class Profile(object):
 
 
 def encodefuns():
-    """Returns a dictionary mapping ICC type signature sig to encoding
-    function.  Each function returns a string comprising the content of
-    the encoded value.  To form the full value, the type sig and the 4
+    """
+    Returns a dictionary mapping ICC type signature to encoding function.
+
+    Each function returns a bytestring comprising the content of
+    the encoded value.  To form the full value, the type signature and the 4
     zero bytes should be prefixed (8 bytes).
     """
-
     def desc(ascii):
-        """Return textDescription type [ICC 2001] 6.5.17.  The ASCII part is
-        filled in with the string `ascii`, the Unicode and ScriptCode parts
-        are empty."""
+        """
+        Return textDescription type [ICC 2001] 6.5.17.
 
+        The ASCII part is filled in with the string `ascii`,
+        the Unicode and ScriptCode parts are empty.
+        """
         ascii += '\x00'
         l = len(ascii)
-
         return struct.pack('>L%ds2LHB67s' % l,
                            l, ascii, 0, 0, 0, 0, '')
 
@@ -220,15 +230,17 @@ def encodefuns():
         return ascii + '\x00'
 
     def curv(f=None, n=256):
-        """Return a curveType, [ICC 2001] 6.5.3.  If no arguments are
-        supplied then a TRC for a linear response is generated (no entries).
+        """
+        Return a curveType, [ICC 2001] 6.5.3.
+
+        If no arguments are  supplied then a TRC for a linear response
+        is generated (no entries).
         If an argument is supplied and it is a number (for *f* to be a
         number it  means that ``float(f)==f``) then a TRC for that
         gamma value is generated.
         Otherwise `f` is assumed to be a function that maps [0.0, 1.0] to
         [0.0, 1.0]; an `n` element table is generated for it.
         """
-
         if f is None:
             return struct.pack('>L', 0)
         try:
@@ -249,6 +261,7 @@ def encodefuns():
 
     return locals()
 
+encodefuncs = encodefuns()
 # Tag type defaults.
 # Most tags can only have one or a few tag types.
 # When encoding, we associate a default tag type with each tag so that
@@ -311,10 +324,9 @@ def encode(tsig, *l):
     `tsig` is the type signature to (the first 4 bytes of
     the encoded value, see [ICC 2004] section 10.
     """
-    fun = encodefuns()
-    if tsig not in fun:
+    if tsig not in encodefuncs:
         raise "No encoder for type %r." % tsig
-    v = fun[tsig](*l)
+    v = encodefuncs[tsig](*l)
     # Padd tsig out with spaces.
     tsig = (tsig + '   ')[:4]
     return tsig + '\x00' * 4 + v
@@ -408,7 +420,7 @@ def ICCdecode(s):
     *value*) is returned, where *sig* is a 4 byte string, and *value* is
     some Python value determined by the content and type.
     """
-    sig = s[0:4].strip()
+    sig = png.bytestostr(s[0:4].strip())
     f = dict(text=RDtext,
              XYZ=RDXYZ,
              curv=RDcurv,
@@ -424,7 +436,7 @@ def RDXYZ(s):
     """Convert ICC XYZType to rank 1 array of trimulus values."""
 
     # See [ICC 2001] 6.5.26
-    assert s[0:4] == 'XYZ '
+    assert s[0:4] == png.strtobytes('XYZ ')
     return readICCXYZNumber(s[8:])
 
 
@@ -432,10 +444,11 @@ def RDsf32(s):
     """Convert ICC s15Fixed16ArrayType to list of float."""
 
     # See [ICC 2004] 10.18
-    assert s[0:4] == 'sf32'
+    assert s[0:4] == png.strtobytes('sf32')
     return s15f16l(s[8:])
 
 
+# TODO: Unused
 def RDmluc(s):
     """
     Convert ICC multiLocalizedUnicodeType.
@@ -448,11 +461,11 @@ def RDmluc(s):
     strings, but the ICC standard does not prohibit it.
     """
     # See [ICC 2004] 10.13
-    assert s[0:4] == 'mluc'
+    assert s[0:4] == png.strtobytes('mluc')
     n, sz = struct.unpack('>2L', s[8:16])
     assert sz == 12
     record = []
-    for i in range(n):
+    for _ in range(n):
         lc, l, o = struct.unpack('4s2L', s[16 + 12 * n:28 + 12 * n])
         record.append(lc, s[o:o + l])
     # How are strings encoded?
@@ -465,7 +478,7 @@ def RDtext(s):
     # Note: type not specified or used in [ICC 2004], only in older
     # [ICC 2001].
     # See [ICC 2001] 6.5.18
-    assert s[0:4] == 'text'
+    assert s[0:4] == png.strtobytes('text')
     return s[8:-1]
 
 
@@ -473,7 +486,7 @@ def RDcurv(s):
     """Convert ICC curveType."""
 
     # See [ICC 2001] 6.5.3
-    assert s[0:4] == 'curv'
+    assert s[0:4] == png.strtobytes('curv')
     count, = struct.unpack('>L', s[8:12])
     if count == 0:
         return dict(gamma=1)
@@ -490,13 +503,13 @@ def RDvcgt(s):
     # http://developer.apple.com/documentation/GraphicsImaging/Reference/
     #         ColorSync_Manager/Reference/reference.html#//apple_ref/c/
     #         tdef/CMVideoCardGammaType
-    assert s[0:4] == 'vcgt'
+    assert s[0:4] == png.strtobytes('vcgt')
     tagtype, = struct.unpack('>L', s[8:12])
     if tagtype != 0:
         return s[8:]
     if tagtype == 0:
         # Table.
-        channels, count, size = struct.unpack('>3H', s[12:18])
+        _, count, size = struct.unpack('>3H', s[12:18])
         if size == 1:
             fmt = 'B'
         elif size == 2:
@@ -510,12 +523,7 @@ def RDvcgt(s):
     return s[8:]
 
 
-def group(s, n):
-    # See
-    # http://www.python.org/doc/2.6/library/functions.html#zip
-    return zip(*[iter(s)] * n)
-
-
+# CLI Implementation
 def iccpout(out, inp, **kwargs):
     """Extract ICC Profile from PNG file `inp` to the file `out`."""
     out.write(png.Reader(file=inp).read()[3]['icc_profile'][1])
@@ -531,6 +539,23 @@ def iccpadd(inp, out, addfile, **kwargs):
     w.write(out, pix)
 
 
+def iccpview(inp, out, **kwargs):
+    """Parse ICC Profile of png file and write result to file `out`"""
+    meta = png.Reader(file=inp).read()[3]
+
+    def analyze(profile):
+        yield 'Header:\n'
+        for pair in profile.d.items():
+            yield '%s: %s\n' % pair
+        yield 'Tags:\n'
+        for pair in profile.tag.items():
+            yield '%s: %s\n' % pair
+
+    profile = Profile()
+    profile.fromString(meta['icc_profile'][1], meta['icc_profile'][0])
+    out.writelines(map(png.strtobytes, analyze(profile)))
+
+
 def main(argv=None):
     import sys
     from getopt import getopt
@@ -541,6 +566,8 @@ def main(argv=None):
             return iccpout
         elif mode == 'add':
             return iccpadd
+        elif mode == 'view':
+            return iccpview
 
     if argv is None:
         argv = sys.argv
@@ -564,6 +591,8 @@ def main(argv=None):
             cfg['mode'] = v
         elif o == '-a':
             cfg['addfile'] = v
+    if len(arg) > 0:
+        cfg['inp'].close()
 
 if __name__ == '__main__':
     main()
