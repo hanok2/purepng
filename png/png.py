@@ -2054,14 +2054,20 @@ class Reader(object):
             elif hasattr(_guess, 'read'):
                 kw["file"] = _guess
 
+        self.close_file = False
         if "filename" in kw:
             self.file = open(kw["filename"], "rb")
+            self.close_file = True
         elif "file" in kw:
             self.file = kw["file"]
         elif "bytes" in kw:
             self.file = _readable(kw["bytes"])
         else:
             raise TypeError("expecting filename, file or bytes array")
+
+    def __del__(self):
+        if self.close_file:
+            self.file.close()
 
     def chunk(self, seek=None, lenient=False):
         """

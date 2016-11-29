@@ -129,7 +129,7 @@ class Profile(object):
             return
         self._addTags(cprt='Copyright unknown.',
                       desc='created by $URL$ $Rev$',
-                      wtpt=D50(),
+                      wtpt=D50,
                       )
 
     def addTags(self, **k):
@@ -145,33 +145,46 @@ class Profile(object):
             self.rawtagdict[tag] = encode(typetag, *thing)
         return self
 
-    def write(self, out):
-        """Write ICC Profile to the file."""
+    def asString(self):
+        """Bytestring representation of ICC Profile"""
         if not self.rawtagtable:
             self.rawtagtable = self.rawtagdict.items()
-        tags = tagblock(self.rawtagtable)
-        self.writeHeader(out, 128 + len(tags))
-        out.write(tags)
-        out.flush()
+        res = self.makeHeader()
+        res += tagblock(self.rawtagtable)
+        return res
 
+    def __str__(self):
+        """Provide string representation for Python < 3 or special cases"""
+        return png.strtobytes(self.asString())
+
+    def __bytes__(self):
+        """Bytestring representation of ICC Profile"""
+        return self.asString()
+
+    def write(self, out):
+        """Write ICC Profile to the file."""
+        s = self.asString()
+        out.write(struct.pack('>L', len(s) + 4))
+        out.write(s)
+        out.flush()
         return self
 
-    def writeHeader(self, out, size=999):
-        """Add default values to the instance's `d` dictionary, then
-        write a header out onto the file stream.  The size of the
-        profile must be specified using the `size` argument.
+    def makeHeader(self):
+        """
+        Costruct header of ICC Profile
+
+        Add default values to the instance's `d` dictionary, then
+        return string contains header.
         """
 
-        def defaultkey(d, key, value):
-            """Add ``[key]==value`` to the dictionary `d`, but only if
-            it does not have that key already.
-            """
+        def ensurebytes(string):
+            """If `string` is `str` type - convert it to bytes"""
+            if isinstance(string, str):
+                return png.strtobytes(string)
+            else:
+                return string
 
-            if key in d:
-                return
-            d[key] = value
-
-        z = '\x00' * 4
+        z = png.zerobyte * 4
         defaults = dict(preferredCMM=z,
                         version='02000000',
                         profileclass=z,
@@ -185,24 +198,24 @@ class Profile(object):
                         model=0,
                         deviceattributes=0,
                         intent=0,
-                        pcsilluminant=encodefuns()['XYZ'](*D50()),
+                        pcsilluminant=encodefuncs['XYZ'](*D50),
                         creator=z,
                         )
         for k, v in defaults.items():
-            defaultkey(self.d, k, v)
+            self.d.setdefault(k, v)
 
         hl = [self.d[k] for k in
               ('preferredCMM', 'version', 'profileclass', 'colourspace',
                'pcs', 'created', 'acsp', 'platform', 'flag',
                'manufacturer', 'model', 'deviceattributes', 'intent',
                'pcsilluminant', 'creator')]
-        hl = [png.strtobytes(it) if isinstance(it, str) else it for it in hl]
+        hl = [ensurebytes(it) for it in hl]
         # Convert to struct.pack input
         hl[1] = int(hl[1], 16)
 
-        out.write(struct.pack('>L4sL4s4s4s12s4s4sL4sLQL12s4s', size, *hl))
-        out.write(png.zerobyte * 44)
-        return self
+        res = struct.pack('>4sL4s4s4s12s4s4sL4sLQL12s4s', *hl)
+        res += png.zerobyte * 44
+        return res
 
 
 def encodefuns():
@@ -227,8 +240,7 @@ def encodefuns():
 
     def text(ascii):
         """Return textType [ICC 2001] 6.5.18."""
-
-        return ascii + '\x00'
+        return ascii + png.zerobyte
 
     def curv(f=None, n=256):
         """
@@ -358,7 +370,8 @@ def tagblock(tag):
     # The element data
     element = png.strtobytes('')
     for k, v in tag:
-        table += struct.pack('>4s2L', png.strtobytes(k), offset + len(element), len(v))
+        table += struct.pack('>4s2L', png.strtobytes(k), offset + len(element),
+                             len(v))
         element += v
     return struct.pack('>L', n) + table + element
 
@@ -369,11 +382,8 @@ def fs15f16(x):
     return int(round(x * 2 ** 16))
 
 
-def D50():
-    """Return D50 illuminant as an (X,Y,Z) triple."""
-
-    # See [ICC 2001] A.1
-    return (0.9642, 1.0000, 0.8249)
+# See [ICC 2001] A.1
+D50 = (0.9642, 1.0000, 0.8249)  # D50 illuminant as an (X,Y,Z) triple
 
 
 def blackshift(m):

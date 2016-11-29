@@ -108,14 +108,12 @@ def pixmeta(metadata, f):
     # Iverson's convention for the win!
     ncolour = nchans - alpha
     greyscale = ncolour == 1
-    bitdepth = bitdepthof(chan)
-    maxval = 2**bitdepth - 1
     # PNG style metadata
     meta = dict(size=(width, rows), bitdepth=bitdepthof(chan),
                 greyscale=greyscale, alpha=alpha, planes=nchans)
 
     return (map(lambda x: itertools.chain(*x),
-                block(unpack(f, rows, width, chan, maxval), width)),
+                block(unpack(f, rows, width, chan), width)),
             meta)
 
 
@@ -131,7 +129,7 @@ def aspng(out, metadata, f):
     p.write(out, pixels)
 
 
-def unpack(f, rows, width, pixel, maxval):
+def unpack(f, rows, width, pixel):
     """
     Unpack `f` into pixels.
 
@@ -188,10 +186,11 @@ def unpack(f, rows, width, pixel, maxval):
                         break
                     x <<= depth
 
+    maxval = float(2**bitdepthof(pixel) - 1)
     # number of bits in each channel
     chan = list(map(int, re.findall(r'\d+', pixel)))
     # type of each channel
-    type = re.findall('[a-z]', pixel)
+    kind = re.findall('[a-z]', pixel)
 
     depth = sum(chan)
 
@@ -213,9 +212,9 @@ def unpack(f, rows, width, pixel, maxval):
         for j in range(len(chan)):
             v = (x >> (depth - chan[j])) & mask(chan[j])
             x <<= chan[j]
-            if type[j] != 'x':
+            if kind[j] != 'x':
                 # scale to maxval
-                v = v * float(maxval) / mask(chan[j])
+                v = v * maxval / mask(chan[j])
                 v = int(v + 0.5)
                 o.append(v)
         yield o
@@ -305,12 +304,11 @@ def main(argv=None):
         except:
             pass
     if len(argv) <= 1:
-        return convert(sys.stdin)
+        convert(sys.stdin)
     else:
         infile = open(argv[1], 'rb')
-        res = convert(infile)
+        convert(infile)
         infile.close()
-        return res
 
 if __name__ == '__main__':
     sys.exit(main())
