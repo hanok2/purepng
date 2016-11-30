@@ -745,8 +745,6 @@ class Writer(object):
           Create an interlaced image.
         chunk_limit
           Write multiple ``IDAT`` chunks to save memory.
-        filter_type
-          Enable and specify PNG filter
         icc_profile
             tuple of (`name`, `databytes`) or just data bytes 
             to write ICC Profile
@@ -758,6 +756,9 @@ class Writer(object):
                 see :meth:`set_modification_time`
             resolution
                 see :meth:`set_resolution`
+            filter_type
+                Enable and specify PNG filter
+                see :meth:`set_filter`
 
         The image size (in pixels) can be specified either by using the
         `width` and `height` arguments, or with the single `size`
@@ -846,14 +847,6 @@ class Writer(object):
         `chunk_limit` is used to limit the amount of memory used whilst
         compressing the image.  In order to avoid using large amounts of
         memory, multiple ``IDAT`` chunks may be created.
-
-        `filter_type` is number or name of filter type for better compression
-        see http://www.w3.org/TR/PNG/#9Filter-types for details
-        It's also possible to use adaptive strategy for choosing filter type
-        per row. Predefined strategies are `sum` and `entropy`.
-        Custom strategies can be added with :meth:`register_extra_filter` or
-        be callable passed with this argument.
-        (see more at :meth:`register_extra_filter`)
         """
         width, height = check_sizes(kwargs.pop('size', None),
                                     width, height)
@@ -886,19 +879,6 @@ class Writer(object):
         if not isinteger(bitdepth) or bitdepth < 1 or 16 < bitdepth:
             raise ValueError("bitdepth (%r) must be a postive integer <= 16" %
               bitdepth)
-
-        if filter_type is None:
-            filter_type = 0
-        elif isinstance(filter_type, basestring):
-            str_ftype = str(filter_type).lower()
-            filter_names = {'none': 0,
-                            'sub': 1,
-                            'up': 2,
-                            'average': 3,
-                            'paeth': 4}
-            if str_ftype in filter_names:
-                filter_type = filter_names[str_ftype]
-        self.filter_type = filter_type
 
         self.rescale = None
         self.palette = check_palette(palette)
@@ -950,7 +930,7 @@ class Writer(object):
         # Ditto for `colormap` and `maxval`.
         popdict(kwargs, ('planes', 'colormap', 'maxval'))
 
-        for ex_kw in ('text', 'resolution', 'modification_time',
+        for ex_kw in ('filter_type', 'text', 'resolution', 'modification_time',
                       'rendering_intent', 'white_point', 'rgb_points'):
             getattr(self, 'set_' + ex_kw)(kwargs.pop(ex_kw, None))
         # Keyword text support
@@ -1020,6 +1000,31 @@ class Writer(object):
             text['Creation Time'] = datetime.datetime(
                 *(check_time(text['Creation Time'])[:6])).isoformat()
         self.text = text
+
+    def set_filter(self, filter_type=None):
+        """
+        Set(modify) filtering mode for better compression
+
+        `filter_type` is number or name of filter type for better compression
+        see http://www.w3.org/TR/PNG/#9Filter-types for details
+        It's also possible to use adaptive strategy for choosing filter type
+        per row. Predefined strategies are `sum` and `entropy`.
+        Custom strategies can be added with :meth:`register_extra_filter` or
+        be callable passed with this argument.
+        (see more at :meth:`register_extra_filter`)
+        """
+        if filter_type is None:
+            filter_type = 0
+        elif isinstance(filter_type, basestring):
+            str_ftype = str(filter_type).lower()
+            filter_names = {'none': 0,
+                            'sub': 1,
+                            'up': 2,
+                            'average': 3,
+                            'paeth': 4}
+            if str_ftype in filter_names:
+                filter_type = filter_names[str_ftype]
+        self.filter_type = filter_type
 
     def set_modification_time(self, modification_time=True):
         """

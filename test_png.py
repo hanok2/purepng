@@ -52,6 +52,7 @@ import png.pnm2png
 import png.plan9topng
 import png.pdsimgtopng
 import png.iccp
+import extools.pngrepack
 import pngsuite
 import sys
 
@@ -1162,6 +1163,38 @@ class CliTest(unittest.TestCase):
         r = png.iccp.Profile()
         r.fromFile(o)
         self.assertEqual(r.d['colourspace'], png.strtobytes('GRAY'))
+
+    def testRepackKeep(self):
+        """Test repack tool with just recompress IDAT(default behaviour)"""
+        o = BytesIO()
+        s = os.path.join(os.path.dirname(__file__),
+                         'testfiles', 'glenda.png')
+        _redirect_io(None, o,
+                     lambda: extools.pngrepack.main(['repackkeep', '-l 1',
+                                                     s, '-']))
+        o.seek(0)
+        r = png.Reader(bytes=o.getvalue())
+        sr = png.Reader(filename=s)
+        rpix, metar = r.read()[2:]
+        spix, metas = sr.read()[2:]
+        self.assertEqual(metar, metas)
+        self.assertEqual(list(rpix), list(spix))
+
+    def testRepackSum(self):
+        """Test repack tool repacking image with sum strategy"""
+        o = BytesIO()
+        s = os.path.join(os.path.dirname(__file__),
+                         'testfiles', 'glenda.png')
+        _redirect_io(None, o,
+                     lambda: extools.pngrepack.main(['repackkeep', '-l1',
+                                                     '-fsum', s, '-']))
+        o.seek(0)
+        r = png.Reader(bytes=o.getvalue())
+        sr = png.Reader(filename=s)
+        rpix, metar = r.read()[2:]
+        spix, metas = sr.read()[2:]
+        self.assertEqual(metar, metas)
+        self.assertEqual(list(rpix), list(spix))
 
 try:
     import numpy
