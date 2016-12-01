@@ -713,7 +713,6 @@ class Writer(object):
                  compression=None,
                  interlace=False,
                  chunk_limit=2 ** 20,
-                 filter_type=None,
                  icc_profile=None,
                  **kwargs
                  ):
@@ -746,7 +745,7 @@ class Writer(object):
         chunk_limit
           Write multiple ``IDAT`` chunks to save memory.
         icc_profile
-            tuple of (`name`, `databytes`) or just data bytes 
+            tuple of (`name`, `databytes`) or just data bytes
             to write ICC Profile
 
         Extra keywords:
@@ -1380,7 +1379,7 @@ class Writer(object):
         # :todo: Certain exceptions in the call to ``.next()`` or the
         # following try would indicate no row data supplied.
         # Should catch.
-        i,row = next(enumrows)
+        i, row = next(enumrows)
         try:
             # If this fails...
             extend(row)
@@ -1395,7 +1394,7 @@ class Writer(object):
             del wrapmapint
             extend(row)
 
-        for i,row in enumrows:
+        for i, row in enumrows:
             extend(row)
             if len(data) > self.chunk_limit:
                 compressed = compressor.compress(
@@ -1481,19 +1480,19 @@ class Writer(object):
             # number of values in reduced image row.
             row_len = ppr*self.planes
             for y in range(ystart, self.height, ystep):
+                end_offset = (y + 1) * vpr
                 if xstep == 1:
+                    # Last pass (0, 1, 1, 2))
                     offset = y * vpr
-                    yield pixels[offset:offset+vpr]
+                    yield pixels[offset:end_offset]
                 else:
                     row = array(fmt)
                     # There's no easier way to set the length of an array
                     row.extend(pixels[0:row_len])
                     offset = y * vpr + xstart * self.planes
-                    end_offset = (y+1) * vpr
-                    skip = self.planes * xstep
                     for i in range(self.planes):
                         row[i::self.planes] = \
-                            pixels[offset+i:end_offset:skip]
+                            pixels[offset + i:end_offset:self.planes * xstep]
                     yield row
 
 
@@ -1870,8 +1869,7 @@ def from_array(a, mode=None, info=None):
         info = dict(info)
 
     # Syntax check mode string.
-    parsed_mode = parse_mode(mode)
-    grayscale, alpha, bitdepth = parsed_mode
+    grayscale, alpha, bitdepth = parse_mode(mode)
 
     # Colour format.
     if 'greyscale' in info:
@@ -1990,10 +1988,14 @@ class Image(object):
 
         try:
             file.write
-            def close(): pass
+
+            def close():
+                pass
         except AttributeError:
             file = open(file, 'wb')
-            def close(): file.close()
+
+            def close():
+                file.close()
 
         try:
             w.write(file, self.rows)
@@ -2177,16 +2179,16 @@ class Reader(object):
                 filt.undo_filter(filter_type, scanline)
                 # Convert so that there is one element per pixel value
                 flat = self.serialtoflat(scanline, ppr)
+                end_offset = (y + 1) * vpr
                 if xstep == 1:
+                    # Last pass (0, 1, 1, 2))
                     assert xstart == 0
                     offset = y * vpr
-                    a[offset:offset+vpr] = flat
+                    a[offset:offset + end_offset] = flat
                 else:
                     offset = y * vpr + xstart * self.planes
-                    end_offset = (y+1) * vpr
-                    skip = self.planes * xstep
                     for i in range(self.planes):
-                        a[offset+i:end_offset:skip] = \
+                        a[offset + i:end_offset:self.planes * xstep] = \
                             flat[i::self.planes]
         return a
 
@@ -2223,9 +2225,10 @@ class Reader(object):
         return map(asvalues, rows)
 
     def serialtoflat(self, raw, width=None):
-        """Convert serial format (byte stream) pixel data to flat row
-        flat pixel.
         """
+        Convert serial format (byte stream) pixel data to flat row flat pixel.
+        """
+
         if self.bitdepth == 8:
             return raw
         if self.bitdepth == 16:
@@ -2257,7 +2260,6 @@ class Reader(object):
         Assumes input is straightlaced.  `raw` should be an iterable
         that yields the raw bytes in chunks of arbitrary size.
         """
-
         # length of row, in bytes (with filter)
         rb_1 = self.row_bytes + 1
         a = bytearray()
