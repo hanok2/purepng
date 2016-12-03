@@ -359,11 +359,11 @@ def check_sizes(size, width, height):
     if width is not None and width != size[0]:
         raise ValueError(
           "size[0] (%r) and width (%r) should match when both are used."
-                % (size[0], width))
+          % (size[0], width))
     if height is not None and height != size[1]:
         raise ValueError(
           "size[1] (%r) and height (%r) should match when both are used."
-                % (size[1], height))
+          % (size[1], height))
     return size
 
 
@@ -757,7 +757,7 @@ class Writer(object):
                 see :meth:`set_resolution`
             filter_type
                 Enable and specify PNG filter
-                see :meth:`set_filter`
+                see :meth:`set_filter_type`
 
         The image size (in pixels) can be specified either by using the
         `width` and `height` arguments, or with the single `size`
@@ -963,14 +963,19 @@ class Writer(object):
         self.chunk_limit = chunk_limit
         self.interlace = bool(interlace)
 
-        colormap = bool(self.palette)
-        self.color_type = 4 * self.alpha + 2 * (not greyscale) + 1 * colormap
-        assert self.color_type in (0, 2, 3, 4, 6)
+        if bool(self.palette) and (self.greyscale or self.alpha):
+            raise FormatError("Paletted image could not be grayscale or"
+                              " contain alpha plane")
 
-        self.color_planes = (3, 1)[self.greyscale or colormap]
-        self.planes = self.color_planes + self.alpha
+        self.planes = (3, 1)[self.greyscale or bool(self.palette)] + self.alpha
 
     def set_icc_profile(self, profile=None, name='ICC Profile'):
+        """
+        Add ICC Profile.
+
+        Prefered way is tuple (`profile_name`, `profile_bytes`), but only
+        bytes with name as separate argument is also supported.
+        """
         if isinstance(profile, (basestring, bytes)):
             icc_profile = [name, profile]
         # TODO: more check
@@ -984,7 +989,8 @@ class Writer(object):
         self.icc_profile = icc_profile
 
     def set_text(self, text=None, **kwargs):
-        """Add textual information.
+        """
+        Add textual information passed as dictionary.
 
         All pairs in dictionary will be written, but keys should be latin-1;
         registered keywords could be used as arguments.
@@ -1000,7 +1006,7 @@ class Writer(object):
                 *(check_time(text['Creation Time'])[:6])).isoformat()
         self.text = text
 
-    def set_filter(self, filter_type=None):
+    def set_filter_type(self, filter_type=None):
         """
         Set(modify) filtering mode for better compression
 
@@ -1255,11 +1261,13 @@ class Writer(object):
         """
         # http://www.w3.org/TR/PNG/#5PNG-file-signature
         outfile.write(png_signature)
+        color_type = 4 * self.alpha + 2 * (not self.greyscale) +\
+            bool(self.palette)
 
         # http://www.w3.org/TR/PNG/#11IHDR
         write_chunk(outfile, 'IHDR',
                     struct.pack("!2I5B", self.width, self.height,
-                                self.bitdepth, self.color_type,
+                                self.bitdepth, color_type,
                                 0, 0, self.interlace))
         # See :chunk:order
         self.__write_srgb(outfile)
@@ -2184,7 +2192,7 @@ class Reader(object):
                     # Last pass (0, 1, 1, 2))
                     assert xstart == 0
                     offset = y * vpr
-                    a[offset:offset + end_offset] = flat
+                    a[offset:end_offset] = flat
                 else:
                     offset = y * vpr + xstart * self.planes
                     for i in range(self.planes):
@@ -2372,7 +2380,7 @@ class Reader(object):
 
         # Derived values
         # http://www.w3.org/TR/PNG/#6Colour-values
-        colormap =  bool(self.color_type & 1)
+        colormap = bool(self.color_type & 1)
         greyscale = not (self.color_type & 2)
         alpha = bool(self.color_type & 4)
         color_planes = (3,1)[greyscale or colormap]

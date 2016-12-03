@@ -118,7 +118,8 @@ class PngImageFile(ImageFile.ImageFile):
         self.info.update(meta['text'])  # experimental
 
     def verify(self):
-        "Verify PNG file"
+        """Verify PNG file"""
+        # TODO: actual verivy (e.g load all chunks to check CRC)
         pass
 
     def load_read(self, n_bytes):

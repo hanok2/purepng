@@ -1173,12 +1173,14 @@ class CliTest(unittest.TestCase):
                      lambda: extools.pngrepack.main(['repackkeep', '-l 1',
                                                      s, '-']))
         o.seek(0)
-        r = png.Reader(bytes=o.getvalue())
+        r = png.Reader(o)
         sr = png.Reader(filename=s)
         rpix, metar = r.read()[2:]
         spix, metas = sr.read()[2:]
         self.assertEqual(metar, metas)
-        self.assertEqual(list(rpix), list(spix))
+        rpix = list(rpix)
+        spix = list(spix)
+        self.assertEqual(rpix, spix)
 
     def testRepackSum(self):
         """Test repack tool repacking image with sum strategy"""
