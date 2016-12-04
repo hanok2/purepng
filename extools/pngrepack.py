@@ -7,7 +7,6 @@
 import sys
 import png
 import zlib
-import logging
 
 
 def buf_emu(not_buffer):
@@ -43,9 +42,9 @@ def comp_idat(idat, level):
         yield flushed
 
 
-def Recompress(inp, out, level=6, filt='keep'):
+def Recompress(inp, out, args):
     p = png.Reader(file=inp)
-    if filt == 'keep':
+    if args.filter == 'keep':
         p.preamble()
         # Python 2.3 doesn' work with inline if
         if p.plte:
@@ -59,13 +58,15 @@ def Recompress(inp, out, level=6, filt='keep'):
                         transparent=getattr(p, 'transparent', None),
                         background=getattr(p, 'background', None),
                         gamma=getattr(p, 'gamma', None),
-                        compression=level,
+                        compression=args.level,
                         interlace=p.interlace)
-        wr.write_idat(out, comp_idat(p.idatdecomp(), level))
+        wr.write_idat(out, comp_idat(p.idatdecomp(), args.level))
     else:
         pix, meta = p.read()[2:]
-        meta['filter_type'] = filt
-        meta['compression'] = level
+        meta['filter_type'] = args.filter
+        meta['compression'] = args.level
+        if not meta['greyscale'] and args.greyscale == 'try':
+            meta['greyscale'] = 'try'
         wr = png.Writer(**meta)
         wr.write(out, pix)
 
@@ -78,11 +79,14 @@ def main(argv=None):
     p.add_argument("-f", "--filter", help="Filter type",
                    choices=['0', '1', '2', '3', '4', 'sum', 'entropy', 'keep'],
                    default='keep')
+    p.add_argument("-g", "--greyscale", help="Try convert to greyscale",
+                   choices=['try', 'keep'],
+                   default='try')
     p.add_argument("input", help="Input file", type=argparse.FileType("rb"))
     p.add_argument("output", help="Output file", type=argparse.FileType("wb"))
     a = p.parse_args(argv[1:])
 
-    Recompress(a.input, a.output, a.level, a.filter)
+    Recompress(a.input, a.output, a)
     a.input.close()
 
 

@@ -273,6 +273,22 @@ except NameError:
         """
         return row.tostring()
 
+try:
+    from itertools import tee
+except ImportError:
+    def tee(iterable, n=2):
+        it = iter(iterable)
+        deques = [list() for _ in range(n)]
+
+        def gen(mydeque):
+            while True:
+                if not mydeque:             # when the local deque is empty
+                    newval = next(it)       # fetch a new value and
+                    for d in deques:        # load it to all the deques
+                        d.append(newval)
+                yield mydeque.pop(0)
+        return tuple(map(gen, deques))
+
 
 # Python 3 workaround
 try:
@@ -434,6 +450,30 @@ def popdict(src, keys):
         if key in src:
             new[key] = src.pop(key)
     return new
+
+
+def try_greyscale(pixels, alpha=False, dirty_alpha=True):
+    """
+    Check if flatboxed RGB `pixels` could be converted to greyscale
+
+    If could - return iterator with greyscale pixels,
+    otherwise return `False` constant
+    """
+    planes = 3 + bool(alpha)
+    res = list()
+    apix = list()
+    for row in pixels:
+        green = row[1::planes]
+        if alpha:
+            apix.append(row[4:planes])
+        if (green != row[0::planes] or green != row[2::planes]):
+            return False
+        else:
+            res.append(green)
+    if alpha:
+        return MergedPlanes(res, 1, apix, 1)
+    else:
+        return res
 
 
 class Error(Exception):
@@ -889,10 +929,13 @@ class Writer(object):
             if alpha:
                 raise ValueError("alpha and palette not compatible")
             if greyscale:
+                if greyscale == 'try':
+                    greyscale = False
                 raise ValueError("greyscale and palette not compatible")
         else:
             # No palette, check for sBIT chunk generation.
             if alpha or not greyscale:
+                # TODO: greyscale try
                 if bitdepth not in (8, 16):
                     targetbitdepth = (8, 16)[bitdepth > 8]
                     self.rescale = (bitdepth, targetbitdepth)
@@ -956,7 +999,12 @@ class Writer(object):
                 self.set_icc_profile(icc_profile)
         else:
             self.icc_profile = None
-        self.greyscale = bool(greyscale)
+
+        if greyscale == 'try':
+            self.greyscale = 'try'
+        else:
+            self.greyscale = bool(greyscale)
+
         self.alpha = bool(alpha)
         self.bitdepth = int(bitdepth)
         self.compression = compression
@@ -967,7 +1015,8 @@ class Writer(object):
             raise FormatError("Paletted image could not be grayscale or"
                               " contain alpha plane")
 
-        self.planes = (3, 1)[self.greyscale or bool(self.palette)] + self.alpha
+        self.planes = (3, 1)[(self.greyscale and self.greyscale != 'try') or
+                            bool(self.palette)] + self.alpha
 
     def set_icc_profile(self, profile=None, name='ICC Profile'):
         """
@@ -1249,6 +1298,18 @@ class Writer(object):
         format; when `packed` is ``True`` each row should be a packed
         sequence of bytes.
         """
+        # Try to optimize
+        if not packed:
+            if self.greyscale == 'try':
+                rows1, rows2 = tee(rows)
+                greyrows = try_greyscale(rows1, self.alpha)
+                if greyrows is not False:
+                    rows = greyrows
+                    self.greyscale = True
+                    self.planes -= 2
+                else:
+                    self.greyscale = False
+                    rows = rows2
         self.write_idat(outfile, self.idat(rows, packed))
         return self.irows
 
@@ -1276,7 +1337,7 @@ class Writer(object):
         if self.rescale:
             write_chunk(outfile, 'sBIT',
                 struct.pack('%dB' % self.planes,
-                            *[self.rescale[0]]*self.planes))
+                            *[self.rescale[0]] * self.planes))
         # :chunk:order: Without a palette (PLTE chunk), ordering is
         # relatively relaxed.  With one, gamma info must precede PLTE
         # chunk which must precede tRNS and bKGD.
