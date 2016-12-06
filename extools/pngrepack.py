@@ -43,6 +43,8 @@ def comp_idat(idat, level):
 
 
 def Recompress(inp, out, args):
+    """Main repack funtion"""
+
     p = png.Reader(file=inp)
     if args.filter == 'keep':
         p.preamble()
@@ -62,7 +64,14 @@ def Recompress(inp, out, args):
                         interlace=p.interlace)
         wr.write_idat(out, comp_idat(p.idatdecomp(), args.level))
     else:
-        pix, meta = p.read()[2:]
+        p.preamble()
+        if args.greyscale == 'no':
+            if p.alpha or p.trns:
+                pix, meta = p.asRGBA()()[2:]
+            else:
+                pix, meta = p.asRGB()[2:]
+        else:
+            pix, meta = p.read()[2:]
         meta['filter_type'] = args.filter
         meta['compression'] = args.level
         if not meta['greyscale'] and args.greyscale == 'try':
@@ -72,6 +81,8 @@ def Recompress(inp, out, args):
 
 
 def main(argv=None):
+    """Main CLI function: parse args and call repack"""
+
     import argparse
     p = argparse.ArgumentParser(description="Recompress image data"
                                 " in PNG file")
@@ -80,7 +91,7 @@ def main(argv=None):
                    choices=['0', '1', '2', '3', '4', 'sum', 'entropy', 'keep'],
                    default='keep')
     p.add_argument("-g", "--greyscale", help="Try convert to greyscale",
-                   choices=['try', 'keep'],
+                   choices=['try', 'keep', 'no'],
                    default='try')
     p.add_argument("input", help="Input file", type=argparse.FileType("rb"))
     p.add_argument("output", help="Output file", type=argparse.FileType("wb"))
@@ -88,6 +99,7 @@ def main(argv=None):
 
     Recompress(a.input, a.output, a)
     a.input.close()
+    a.output.flush()
 
 
 if __name__ == '__main__':

@@ -1198,6 +1198,44 @@ class CliTest(unittest.TestCase):
         self.assertEqual(metar, metas)
         self.assertEqual(list(rpix), list(spix))
 
+    def testRepackGrey(self):
+        """Test repack tool converting image to greyscale"""
+        o = BytesIO()
+        s = os.path.join(os.path.dirname(__file__),
+                         'testfiles', 'greytv24.png')
+        _redirect_io(None, o,
+                     lambda: extools.pngrepack.main(['repackgrey', '-l6',
+                                                     '-fsum', s, '-']))
+        o.seek(0)
+        r = png.Reader(o)
+        # Reference is original greyscale picture
+        s = os.path.join(os.path.dirname(__file__),
+                         'testfiles', 'greytv.png')
+        sr = png.Reader(filename=s)
+        rpix, metar = r.read()[2:]
+        spix, metas = sr.read()[2:]
+        self.assertEqual(metar, metas)
+        self.assertEqual(list(rpix), list(spix))
+
+    def testRepackGrey2RGB(self):
+        """Test repack tool converting greyscale image to RGB"""
+        o = BytesIO()
+        s = os.path.join(os.path.dirname(__file__),
+                         'testfiles', 'greytv.png')
+        _redirect_io(None, o,
+                     lambda: extools.pngrepack.main(['repackgrey', '-l6',
+                                                     '-fsum', '-gno', s, '-']))
+        o.seek(0)
+        r = png.Reader(o)
+        # Reference is original greyscale picture
+        s = os.path.join(os.path.dirname(__file__),
+                         'testfiles', 'greytv24.png')
+        sr = png.Reader(filename=s)
+        rpix, metar = r.read()[2:]
+        spix, metas = sr.read()[2:]
+        self.assertEqual(metar, metas)
+        self.assertEqual(list(rpix), list(spix))
+
 try:
     import numpy
 
