@@ -44,7 +44,6 @@ def comp_idat(idat, level):
 
 def Recompress(inp, out, args):
     """Main repack funtion"""
-
     p = png.Reader(file=inp)
     if args.filter == 'keep':
         p.preamble()
@@ -82,7 +81,6 @@ def Recompress(inp, out, args):
 
 def main(argv=None):
     """Main CLI function: parse args and call repack"""
-
     import argparse
     p = argparse.ArgumentParser(description="Recompress image data"
                                 " in PNG file")

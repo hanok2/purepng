@@ -277,6 +277,7 @@ try:
     from itertools import tee
 except ImportError:
     def tee(iterable, n=2):
+        """Return n independent iterators from a single iterable."""
         it = iter(iterable)
         deques = [list() for _ in range(n)]
 
@@ -299,8 +300,8 @@ except NameError:
 # Conditionally convert to bytes.  Works on Python 2 and Python 3.
 try:
     bytes('', 'ascii')
-    def strtobytes(x): return bytes(x, 'iso8859-1')
-    def bytestostr(x): return str(x, 'iso8859-1')
+    def strtobytes(x): return bytes(x, 'iso8859-1')  # noqa
+    def bytestostr(x): return str(x, 'iso8859-1')  # noqa
 except (NameError, TypeError):
     # We get NameError when bytes() does not exist (most Python
     # 2.x versions), and TypeError when bytes() exists but is on
@@ -2294,10 +2295,7 @@ class Reader(object):
         return map(asvalues, rows)
 
     def serialtoflat(self, raw, width=None):
-        """
-        Convert serial format (byte stream) pixel data to flat row flat pixel.
-        """
-
+        """Convert serial (byte stream) pixel data to flat row flat pixel."""
         if self.bitdepth == 8:
             return raw
         if self.bitdepth == 16:

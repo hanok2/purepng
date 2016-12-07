@@ -1,7 +1,16 @@
+strictness: high
 doc-warnings: yes
 test-warnings: yes
 
-# many redefined builtins for compatiblity reason
 pylint:
   disable:
+    # many redefined builtins for compatiblity reason
     - redefined-builtin
+    # many check of capability via call with no result
+    - pointless-statement
+
+pyroma:
+  run: true
+
+pep8:
+  full: true

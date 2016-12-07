@@ -35,6 +35,7 @@ except (SyntaxError, ValueError):
 
 # Utils
 def group(s, n):
+    """Repack iterator items into groups"""
     # See http://www.python.org/doc/2.6/library/functions.html#zip
     return zip(*[iter(s)] * n)
 
