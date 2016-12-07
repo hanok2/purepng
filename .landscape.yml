@@ -8,6 +8,10 @@ pylint:
     - redefined-builtin
     # many check of capability via call with no result
     - pointless-statement
+    # Many variable-like constants and also redefining builtins
+    - invalid-name
+    # Many optional attributes with metadata
+    - attribute-defined-outside-init
 
 pyroma:
   run: true

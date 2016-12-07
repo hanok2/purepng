@@ -2450,7 +2450,7 @@ class Reader(object):
         self.alpha = alpha
         self.color_planes = color_planes
         self.planes = planes
-        self.psize = float(self.bitdepth)/float(8) * planes
+        self.psize = float(self.bitdepth)/ float(8) * planes
         if int(self.psize) == self.psize:
             self.psize = int(self.psize)
         self.row_bytes = int(math.ceil(self.width * self.psize))
@@ -2766,6 +2766,7 @@ class Reader(object):
             meta['bitdepth'] = 8
             meta['planes'] = 3 + bool(self.trns)
             plte = self.palette()
+
             def iterpal(pixels):
                 for row in pixels:
                     row = [plte[i] for i in row]
@@ -2780,7 +2781,7 @@ class Reader(object):
             # perhaps go faster (all those 1-tuples!), but I still
             # wonder whether the code proliferation is worth it)
             it = self.transparent
-            maxval = 2**meta['bitdepth']-1
+            maxval = 2**meta['bitdepth'] - 1
             planes = meta['planes']
             meta['alpha'] = True
             meta['planes'] += 1
@@ -2799,7 +2800,7 @@ class Reader(object):
                     # and add it as the extra channel.
                     row = group(row, planes)
                     opa = [maxval * (it != i) for i in row]
-                    opa = zip(opa) # convert to 1-tuples
+                    opa = zip(opa)  # convert to 1-tuples
                     yield wrap_array(itertools.chain(*list(map(operator.add,
                                                                row, opa))))
             pixels = itertrns(pixels)
@@ -2809,7 +2810,7 @@ class Reader(object):
             targetbitdepth = max(sbit)
             if targetbitdepth > meta['bitdepth']:
                 raise Error('sBIT chunk %r exceeds bitdepth %d' %
-                    (sbit,self.bitdepth))
+                    (sbit, self.bitdepth))
             if min(sbit) <= 0:
                 raise Error('sBIT chunk %r has a 0-entry' % sbit)
             if targetbitdepth == meta['bitdepth']:
@@ -2817,31 +2818,33 @@ class Reader(object):
         if targetbitdepth:
             shift = meta['bitdepth'] - targetbitdepth
             meta['bitdepth'] = targetbitdepth
+
             def itershift(pixels):
                 for row in pixels:
                     yield array('BH'[targetbitdepth > 8],
                                 [it >> shift for it in row])
             pixels = itershift(pixels)
-        return x,y,pixels,meta
+        return x, y, pixels, meta
 
     def asFloat(self, maxval=1.0):
         """Return image pixels as per :meth:`asDirect` method, but scale
         all pixel values to be floating point values between 0.0 and
         *maxval*.
         """
-        x,y,pixels,info = self.asDirect()
+        x, y, pixels, info = self.asDirect()
         sourcemaxval = 2**info['bitdepth']-1
         del info['bitdepth']
         info['maxval'] = float(maxval)
-        factor = float(maxval)/float(sourcemaxval)
+        factor = float(maxval) / float(sourcemaxval)
+
         def iterfloat():
             for row in pixels:
                 yield [factor * it for it in row]
-        return x,y,iterfloat(),info
+        return x, y, iterfloat(), info
 
     def _as_rescale(self, get, targetbitdepth):
         """Helper used by :meth:`asRGB8` and :meth:`asRGBA8`."""
-        width,height,pixels,meta = get()
+        width, height, pixels, meta = get()
         maxval = 2**meta['bitdepth'] - 1
         targetmaxval = 2**targetbitdepth - 1
         factor = float(targetmaxval) / float(maxval)
@@ -2915,11 +2918,11 @@ class Reader(object):
         source image.  In particular, for this method
         ``metadata['greyscale']`` will be ``False``.
         """
-        width,height,pixels,meta = self.asDirect()
+        width, height, pixels, meta = self.asDirect()
         if meta['alpha']:
             raise Error("will not convert image with alpha channel to RGB")
         if not meta['greyscale']:
-            return width,height,pixels,meta
+            return width, height, pixels, meta
         meta['greyscale'] = False
         newarray = (newBarray, newHarray)[meta['bitdepth'] > 8]
 
@@ -2929,7 +2932,7 @@ class Reader(object):
                 for i in range(3):
                     a[i::3] = row
                 yield a
-        return width,height,iterrgb(),meta
+        return width, height, iterrgb(), meta
 
     def asRGBA(self):
         """
@@ -2943,9 +2946,9 @@ class Reader(object):
         ``metadata['greyscale']`` will be ``False``, and
         ``metadata['alpha']`` will be ``True``.
         """
-        width,height,pixels,meta = self.asDirect()
+        width, height, pixels, meta = self.asDirect()
         if meta['alpha'] and not meta['greyscale']:
-            return width,height,pixels,meta
+            return width, height, pixels, meta
         maxval = 2**meta['bitdepth'] - 1
         if meta['bitdepth'] > 8:
             def newarray():
@@ -2980,6 +2983,7 @@ class Reader(object):
         else:
             assert not meta['alpha'] and not meta['greyscale']
             # RGB to RGBA
+
             def convert():
                 for row in pixels:
                     a = newarray()
@@ -2987,7 +2991,7 @@ class Reader(object):
                     yield a
         meta['alpha'] = True
         meta['greyscale'] = False
-        return width,height,convert(),meta
+        return width, height, convert(), meta
 
 
 def check_bitdepth_colortype(bitdepth, colortype):
@@ -2996,9 +3000,9 @@ def check_bitdepth_colortype(bitdepth, colortype):
     and specified in a valid combination. Returns if valid,
     raise an Exception if not valid.
     """
-    if bitdepth not in (1,2,4,8,16):
+    if bitdepth not in (1, 2, 4, 8, 16):
         raise FormatError("invalid bit depth %d" % bitdepth)
-    if colortype not in (0,2,3,4,6):
+    if colortype not in (0, 2, 3, 4, 6):
         raise FormatError("invalid colour type %d" % colortype)
     # Check indexed (palettized) images have 8 or fewer bits
     # per pixel; check only indexed or greyscale images have
@@ -3009,7 +3013,7 @@ def check_bitdepth_colortype(bitdepth, colortype):
           " have bitdepth > 8 (bit depth %d)."
           " See http://www.w3.org/TR/2003/REC-PNG-20031110/#table111 ."
           % (bitdepth, colortype))
-    if bitdepth < 8 and colortype not in (0,3):
+    if bitdepth < 8 and colortype not in (0, 3):
         raise FormatError("Illegal combination of bit depth (%d)"
           " and colour type (%d)."
           " See http://www.w3.org/TR/2003/REC-PNG-20031110/#table111 ."

@@ -27,6 +27,7 @@ except NameError:
 if sys.platform.startswith('java'):
     # buffer object in Jython is not compatible with zlib
     oldbuf = buffer
+
     def buffer(src):
         return str(oldbuf(src))
 
