@@ -1311,7 +1311,7 @@ class Writer(object):
                 else:
                     self.greyscale = False
                     rows = rows2
-        self.write_idat(outfile, self.idat(rows, packed))
+        self.write_idat(outfile, self.comp_idat(self.idat(rows, packed)))
         return self.irows
 
     def write_idat(self, outfile, idat_sequence):
@@ -1384,14 +1384,24 @@ class Writer(object):
         # http://www.w3.org/TR/PNG/#11IEND
         write_chunk(outfile, 'IEND')
 
-    def idat(self, rows, packed=False):
-        """Generator that produce IDAT chunks from rows"""
+    def comp_idat(self, idat):
+        """Generator that produce compressed IDAT chunks from IDAT data"""
         # http://www.w3.org/TR/PNG/#11IDAT
         if self.compression is not None:
             compressor = zlib.compressobj(self.compression)
         else:
             compressor = zlib.compressobj()
+        for dat in idat:
+            compressed = compressor.compress(dat)
+            if len(compressed):
+                yield compressed
+        flushed = compressor.flush()
+        if len(flushed):
+            yield flushed
 
+    def idat(self, rows, packed=False):
+        """Generator that produce uncompressed IDAT data from rows"""
+        # http://www.w3.org/TR/PNG/#11IDAT
         filt = Filter(self.bitdepth * self.planes,
                       self.interlace, self.height)
         data = bytearray()
@@ -1467,22 +1477,14 @@ class Writer(object):
         for i, row in enumrows:
             extend(row)
             if len(data) > self.chunk_limit:
-                compressed = compressor.compress(
-                  bytearray_to_bytes(data))
-                if len(compressed):
-                    yield compressed
+                yield bytearray_to_bytes(data)
                 # Because of our very witty definition of ``extend``,
                 # above, we must re-use the same ``data`` object.  Hence
                 # we use ``del`` to empty this one, rather than create a
                 # fresh one (which would be my natural FP instinct).
                 del data[:]
         if len(data):
-            compressed = compressor.compress(bytearray_to_bytes(data))
-        else:
-            compressed = bytes()
-        flushed = compressor.flush()
-        if len(compressed) or len(flushed):
-            yield compressed + flushed
+            yield bytearray_to_bytes(data)
         self.irows = i + 1
 
     def write_array(self, outfile, pixels):

@@ -1,19 +1,20 @@
 #!/usr/bin/env python
-# $URL$
-# $Rev$
-# pngrepack
-# Recompression idat
-
+"""
+Simple tool to repack png file using purepng
+"""
 import sys
 import png
-import zlib
 
 
 def buf_emu(not_buffer):
+    """Buffer emulation, mostly for `array` object"""
     if hasattr(not_buffer, 'tostring'):
         return not_buffer.tostring()
     else:
-        return bytes(not_buffer)
+        try:
+            return bytes(not_buffer)
+        except NameError:
+            return str(not_buffer)
 
 
 try:
@@ -32,52 +33,42 @@ if sys.platform.startswith('java'):
         return str(oldbuf(src))
 
 
-def comp_idat(idat, level):
-    compressor = zlib.compressobj(level)
-    for dat in idat:
-        compressed = compressor.compress(buffer(dat))
-        if compressed:
-            yield compressed
-    flushed = compressor.flush()
-    if flushed:
-        yield flushed
-
-
-def Recompress(inp, out, args):
-    """Main repack funtion"""
-    p = png.Reader(file=inp)
-    if args.filter == 'keep':
-        p.preamble()
-        # Python 2.3 doesn' work with inline if
-        if p.plte:
-            palette = p.palette()
-        else:
-            palette = None
-        wr = png.Writer(size=(p.width, p.height),
-                        greyscale=p.greyscale, alpha=p.alpha,
-                        bitdepth=p.bitdepth,
-                        palette=palette,
-                        transparent=getattr(p, 'transparent', None),
-                        background=getattr(p, 'background', None),
-                        gamma=getattr(p, 'gamma', None),
-                        compression=args.level,
-                        interlace=p.interlace)
-        wr.write_idat(out, comp_idat(p.idatdecomp(), args.level))
+def simple_recompress(reader, outfile, level):
+    """Simple recompress of IDAT chunk without other processing"""
+    reader.preamble()
+    # Python 2.3 doesn' work with inline if
+    if reader.plte:
+        palette = reader.palette()
     else:
-        p.preamble()
-        if args.greyscale == 'no':
-            if p.alpha or p.trns:
-                pix, meta = p.asRGBA()()[2:]
-            else:
-                pix, meta = p.asRGB()[2:]
+        palette = None
+    wr = png.Writer(size=(reader.width, reader.height),
+                    greyscale=reader.greyscale, alpha=reader.alpha,
+                    bitdepth=reader.bitdepth,
+                    palette=palette,
+                    transparent=getattr(reader, 'transparent', None),
+                    background=getattr(reader, 'background', None),
+                    gamma=getattr(reader, 'gamma', None),
+                    compression=level,
+                    interlace=reader.interlace)
+    wr.write_idat(outfile, wr.comp_idat(map(buffer, reader.idatdecomp())))
+
+
+def repack(p, out, args):
+    """Main repack funtion"""
+    p.preamble()
+    if args.greyscale == 'no':
+        if p.alpha or p.trns:
+            pix, meta = p.asRGBA()()[2:]
         else:
-            pix, meta = p.read()[2:]
-        meta['filter_type'] = args.filter
-        meta['compression'] = args.level
-        if not meta['greyscale'] and args.greyscale == 'try':
-            meta['greyscale'] = 'try'
-        wr = png.Writer(**meta)
-        wr.write(out, pix)
+            pix, meta = p.asRGB()[2:]
+    else:
+        pix, meta = p.read()[2:]
+    meta['filter_type'] = args.filter
+    meta['compression'] = args.level
+    if not meta['greyscale'] and args.greyscale == 'try':
+        meta['greyscale'] = 'try'
+    wr = png.Writer(**meta)
+    wr.write(out, pix)
 
 
 def main(argv=None):
@@ -95,8 +86,11 @@ def main(argv=None):
     p.add_argument("input", help="Input file", type=argparse.FileType("rb"))
     p.add_argument("output", help="Output file", type=argparse.FileType("wb"))
     a = p.parse_args(argv[1:])
-
-    Recompress(a.input, a.output, a)
+    r = png.Reader(file=a.input)
+    if a.filter == 'keep':
+        simple_recompress(r, a.output, a.level)
+    else:
+        repack(r, a.output, a)
     a.input.close()
     a.output.flush()
 
