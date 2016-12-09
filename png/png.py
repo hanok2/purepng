@@ -920,7 +920,7 @@ class Writer(object):
             raise ValueError("bitdepth (%r) must be a postive integer <= 16" %
               bitdepth)
 
-        self.rescale = None
+        self.pixbitdepth = bitdepth
         self.palette = check_palette(palette)
         if self.palette:
             if bitdepth not in (1, 2, 4, 8):
@@ -933,36 +933,6 @@ class Writer(object):
                 if greyscale == 'try':
                     greyscale = False
                 raise ValueError("greyscale and palette not compatible")
-        else:
-            # No palette, check for sBIT chunk generation.
-            if alpha or not greyscale:
-                # TODO: greyscale try
-                if bitdepth not in (8, 16):
-                    targetbitdepth = (8, 16)[bitdepth > 8]
-                    self.rescale = (bitdepth, targetbitdepth)
-                    bitdepth = targetbitdepth
-                    del targetbitdepth
-            else:
-                assert greyscale
-                assert not alpha
-                if bitdepth not in (1, 2, 4, 8, 16):
-                    if bitdepth > 8:
-                        targetbitdepth = 16
-                    elif bitdepth == 3:
-                        targetbitdepth = 4
-                    else:
-                        assert bitdepth in (5, 6, 7)
-                        targetbitdepth = 8
-                    self.rescale = (bitdepth, targetbitdepth)
-                    bitdepth = targetbitdepth
-                    del targetbitdepth
-
-        if bitdepth < 8 and (alpha or not greyscale and not self.palette):
-            raise ValueError(
-              "bitdepth < 8 only permitted with greyscale or palette")
-        if bitdepth > 8 and self.palette:
-            raise ValueError(
-                "bit depth must be 8 or less for images with palette")
 
         self.transparent = check_color(transparent, greyscale, 'transparent')
         self.background = check_color(background, greyscale, 'background')
@@ -1167,6 +1137,10 @@ class Writer(object):
         This method should be called only from ``write_idat`` method
         or chunk order will be ruined.
         """
+        # We must have true bitdepth within palette to use sBIT with palette
+        # if self.pixbitdepth != 8:
+        #     write_chunk(outfile, 'sBIT',
+        #             bytearray_to_bytes(bytearray((self.pixbitdepth,) * 3)))
         p = bytearray()
         t = bytearray()
 
@@ -1311,6 +1285,41 @@ class Writer(object):
                 else:
                     self.greyscale = False
                     rows = rows2
+
+        if not self.palette:
+            # No palette, check for rescale
+            targetbitdepth = None
+            srcbitdepth = self.bitdepth
+            if self.alpha or not self.greyscale:
+                if self.bitdepth not in (8, 16):
+                    targetbitdepth = (8, 16)[self.bitdepth > 8]
+            else:
+                assert self.greyscale
+                assert not self.alpha
+                if self.bitdepth not in (1, 2, 4, 8, 16):
+                    if self.bitdepth > 8:
+                        targetbitdepth = 16
+                    elif self.bitdepth == 3:
+                        targetbitdepth = 4
+                    else:
+                        assert self.bitdepth in (5, 6, 7)
+                        targetbitdepth = 8
+
+            if targetbitdepth:
+                if packed:
+                    raise Error("writing packed pixels not suitable for"
+                                " bit depth %d" % self.bitdepth)
+                self.bitdepth = targetbitdepth
+                factor = \
+                    float(2**targetbitdepth - 1) / float(2**srcbitdepth - 1)
+
+                def scalerow(inrows):
+                    """Rescale all pixels"""
+                    for row in inrows:
+                        yield [int(round(factor * x)) for x in row]
+
+                rows = scalerow(rows)
+
         self.write_idat(outfile, self.comp_idat(self.idat(rows, packed)))
         return self.irows
 
@@ -1335,10 +1344,12 @@ class Writer(object):
         self.__write_srgb(outfile)
         # See :chunk:order
         # http://www.w3.org/TR/PNG/#11sBIT
-        if self.rescale:
+        if not self.palette and self.pixbitdepth != self.bitdepth:
+            # Write sBIT of palette within __write_palette
+            # TODO: support different bitdepth per plane
             write_chunk(outfile, 'sBIT',
-                struct.pack('%dB' % self.planes,
-                            *[self.rescale[0]] * self.planes))
+                        struct.pack('%dB' % self.planes,
+                                    *[self.pixbitdepth] * self.planes))
         # :chunk:order: Without a palette (PLTE chunk), ordering is
         # relatively relaxed.  With one, gamma info must precede PLTE
         # chunk which must precede tRNS and bKGD.
@@ -1432,21 +1443,13 @@ class Writer(object):
                 # Adding padding bytes so we can group into a whole
                 # number of spb-tuples.
                 l = float(len(a))
-                extra = math.ceil(l / float(spb))*spb - l
-                a.extend([0]*int(extra))
+                extra = math.ceil(l / float(spb)) * spb - l
+                a.extend([0] * int(extra))
                 # Pack into bytes
                 l = group(a, spb)
                 l = [reduce(lambda x, y: (x << self.bitdepth) + y, e)
                      for e in l]
                 byteextend(l)
-        if self.rescale:
-            oldextend = extend
-            factor = \
-              float(2**self.rescale[1]-1) / float(2**self.rescale[0]-1)
-
-            def extend(sl):
-                """Rescale before extend"""
-                oldextend([int(round(factor * x)) for x in sl])
 
         # Build the first row, testing mostly to see if we need to
         # changed the extend function to cope with NumPy integer types
@@ -1513,16 +1516,10 @@ class Writer(object):
         is not one naturally supported by PNG; the bit depth should be
         1, 2, 4, 8, or 16.
         """
-        if self.rescale:
-            raise Error("write_packed method not suitable for bit depth %d" %
-              self.rescale[0])
         return self.write_passes(outfile, rows, packed=True)
 
     def array_scanlines(self, pixels):
-        """
-        Generates boxed rows (flat pixels) from flat rows (flat pixels)
-        in an array.
-        """
+        """Generates boxed rows (flat pixels) from flat rows in an array."""
         # Values per row
         vpr = self.width * self.planes
         stop = 0
@@ -2760,7 +2757,7 @@ class Reader(object):
         if not self.colormap and not self.trns and not self.sbit:
             return self.read()
 
-        x,y,pixels,meta = self.read()
+        x, y, pixels, meta = self.read()
 
         if self.colormap:
             meta['colormap'] = False
@@ -2834,7 +2831,7 @@ class Reader(object):
         *maxval*.
         """
         x, y, pixels, info = self.asDirect()
-        sourcemaxval = 2**info['bitdepth']-1
+        sourcemaxval = 2**info['bitdepth'] - 1
         del info['bitdepth']
         info['maxval'] = float(maxval)
         factor = float(maxval) / float(sourcemaxval)
