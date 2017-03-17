@@ -10,7 +10,8 @@ writing a PNG file.  The only thing we can do is read it back in
 again, which merely checks consistency, not that the PNG file we
 produce is valid.
 """
-
+# Using methods as part of unittest API
+# pylint: disable=no-self-use
 from __future__ import generators
 import logging
 # logging.getLogger().setLevel(logging.INFO)
@@ -681,26 +682,22 @@ class Test(unittest.TestCase):
 
     def testExtraPixels(self):
         """Test file that contains too many pixels."""
-        def eachchunk(chunk):
-            if chunk[0] != 'IDAT':
-                return chunk
-            data = zlib.decompress(chunk[1])
+        def eachchunk(cname, data):
+            """Adding garbage"""
+            data = zlib.decompress(data)
             data += strtobytes('\x00garbage')
             data = zlib.compress(data)
-            chunk = (chunk[0], data)
-            return chunk
+            return (cname, data)
         self.assertRaises(png.FormatError, self.helperFormat, eachchunk)
 
     def testNotEnoughPixels(self):
         """Test file without sufficient data"""
-        def eachchunk(chunk):
-            if chunk[0] != 'IDAT':
-                return chunk
-            # Remove last byte.
-            data = zlib.decompress(chunk[1])
+        def eachchunk(cname, data):
+            """Remove last byte"""
+            data = zlib.decompress(data)
             data = data[:-1]
             data = zlib.compress(data)
-            return (chunk[0], data)
+            return (cname, data)
         self.assertRaises(png.FormatError, self.helperFormat, eachchunk)
 
     def testBadChecksum(self):
@@ -760,7 +757,7 @@ class Test(unittest.TestCase):
         r = png.Reader(pngsuite.png['xd9n2c08'])
         self.assertRaises(png.FormatError, r.asDirect)
 
-    def helperFormat(self, f):
+    def helperFormat(self, f, idat_only=True):
         """
         Helper for format tests
 
@@ -773,20 +770,22 @@ class Test(unittest.TestCase):
         def newchunks():
             """chunks conversion"""
             for chunk in r.chunks():
-                yield f(chunk)
+                if idat_only and chunk[0] != 'IDAT':
+                    yield chunk
+                else:
+                    yield f(*chunk)
         png.write_chunks(o, newchunks())
         r = png.Reader(bytes=o.getvalue())
         return list(r.asDirect()[2])
 
     def testBadFilter(self):
-        def eachchunk(chunk):
-            if chunk[0] != 'IDAT':
-                return chunk
-            data = zlib.decompress(chunk[1])
-            # Corrupt the first filter byte
+        """Test that broken filter raise format error"""
+        def eachchunk(cname, data):
+            """Corrupt the first filter byte"""
+            data = zlib.decompress(data)
             data = strtobytes('\x99') + data[1:]
             data = zlib.compress(data)
-            return (chunk[0], data)
+            return (cname, data)
         self.assertRaises(png.FormatError, self.helperFormat, eachchunk)
 
     def testChun(self):
