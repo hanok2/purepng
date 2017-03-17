@@ -42,7 +42,7 @@ It's intended that you can copy png.py into your application and distribute
 it. The following "curl" command should copy the latest version into your
 current directory:
 
-curl -LO https://raw.github.com/scondo/purepng/master/code/png.py
+curl -LO https://raw.githubusercontent.com/Scondo/purepng/master/png/png.py
 
 
 ## MIGRATION FROM PYPNG
