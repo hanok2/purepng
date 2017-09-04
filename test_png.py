@@ -1246,7 +1246,6 @@ class CliTest(unittest.TestCase):
         r = png.Reader(o)
         rpix = r.read()[2]
         rows = list(rpix)
-        print len(rows[0]) // 3
         self.assertEqual(list(rows[0][:3]), [255, 0, 0])
         self.assertEqual(list(rows[0][-3:]), [0, 255, 0])
         self.assertEqual(list(rows[-1][:3]), [255, 0, 255])
