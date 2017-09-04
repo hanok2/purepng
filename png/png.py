@@ -1602,12 +1602,12 @@ class MergedPlanes(object):
         `seq_right` also may be integer instead of iterator this represent
         filling pixels with this value
         """
-        self.seq_left = seq_left
+        self.seq_left = iter(seq_left)
         self.nplanes_left = nplanes_left
         if isinstance(seq_right, int):
             self.seq_right = self.rigthgen(seq_right)
         else:
-            self.seq_right = seq_right
+            self.seq_right = iter(seq_right)
         self.nplanes_right = nplanes_right
         self.nplanes_res = nplanes_left + nplanes_right
         self.bitdepth = bitdepth
@@ -1626,10 +1626,10 @@ class MergedPlanes(object):
             yield self.newarray(self.nplanes_right * self.width, value)
 
     def next(self):
-        """Generate merged row, consuming rows of original iterstors"""
+        """Generate merged row, consuming rows of original iterators"""
         left = next(self.seq_left)
         if self.width is None:
-            self.width = len(left) / self.nplanes_left
+            self.width = len(left) // self.nplanes_left
         if self.bitdepth is None:
             # Detect bitdepth
             if hasattr(left, 'itemsize'):  # array
@@ -1651,13 +1651,13 @@ class MergedPlanes(object):
         else:
             for i in range(self.nplanes_left):
                 for j in range(self.width):
-                    new[(i * self.nplanes_res) + j] =\
-                        left[(i * self.nplanes_left) + j]
+                    new[i + (j * self.nplanes_res)] =\
+                        left[i + (j * self.nplanes_left)]
             for i in range(self.nplanes_right):
                 i_ = i + self.nplanes_left
                 for j in range(self.width):
-                    new[(i_ * self.nplanes_res) + j] =\
-                        right[(i * self.nplanes_right) + j]
+                    new[(j * self.nplanes_res) + i_] =\
+                        right[(j * self.nplanes_right) + i]
         return new
 
     def __next__(self):
