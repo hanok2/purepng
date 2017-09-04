@@ -7,6 +7,7 @@ python:
   - "3.3"
   - "3.4"
   - "3.5"
+  - "3.6"
   - "nightly"  
   - "pypy"
   - "pypy3"
@@ -33,6 +34,7 @@ matrix:
 install:
   - pip install argparse
   - pip install "pillow<4 ; python_version < '2.7'"
+  - pip install "pillow<4 ; python_version = '3.2'"
   - pip install pillow
   - pip install -r pip_numpy.txt
   - if [[ $TRAVIS_PYTHON_VERSION == '3.2' ]]; then pip install "coverage<4"; fi
