@@ -54,6 +54,7 @@ import png.plan9topng
 import png.pdsimgtopng
 import png.iccp
 import extools.pngrepack
+import extools.gen
 import pngsuite
 import sys
 
@@ -1234,6 +1235,22 @@ class CliTest(unittest.TestCase):
         spix, metas = sr.read()[2:]
         self.assertEqual(metar, metas)
         self.assertEqual(list(rpix), list(spix))
+
+    def testGen(self):
+        """Test repack tool converting greyscale image to RGB"""
+        o = BytesIO()
+        _redirect_io(None, o,
+                     lambda: extools.gen.main(['gentest',
+                                               '-RGRL', '-GGLR', '-BGTB']))
+        o.seek(0)
+        r = png.Reader(o)
+        rpix = r.read()[2]
+        rows = list(rpix)
+        print len(rows[0]) // 3
+        self.assertEqual(list(rows[0][:3]), [255, 0, 0])
+        self.assertEqual(list(rows[0][-3:]), [0, 255, 0])
+        self.assertEqual(list(rows[-1][:3]), [255, 0, 255])
+        self.assertEqual(list(rows[-1][-3:]), [0, 255, 255])
 
 try:
     import numpy
