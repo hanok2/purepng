@@ -1590,7 +1590,7 @@ class MergedPlanes(object):
     """Merge two flatboxed iterator as new iterator"""
 
     def __init__(self, seq_left, nplanes_left, seq_right, nplanes_right,
-                 bitdepth=None, width=None):
+                 bitdepth=None):
         """
         Initialise merge iterator with sources
 
@@ -1611,7 +1611,6 @@ class MergedPlanes(object):
         self.nplanes_right = nplanes_right
         self.nplanes_res = nplanes_left + nplanes_right
         self.bitdepth = bitdepth
-        self.width = width
 
     def newarray(self, length, value=0):
         """Initialise empty row"""
@@ -1625,38 +1624,46 @@ class MergedPlanes(object):
         while True:
             yield self.newarray(self.nplanes_right * self.width, value)
 
+    def detectbitdepth(self, line):
+        """Detect bitdepth from line"""
+        if hasattr(line, 'typecode'):  # array
+            if line.typecode in ('b', 'B', 'c'):
+                self.bitdepth = 8
+            elif line.typecode in ('h', 'H', 'i', 'I'):
+                self.bitdepth = 16
+            elif line.typecode in ('l', 'L'):
+                self.bitdepth = 32
+        elif isinstance(line, (bytes, bytearray)):  # bytearray
+            self.bitdepth = 8
+        else:
+            raise Error("Unknown bitdepth for merging planes")
+
     def next(self):
         """Generate merged row, consuming rows of original iterators"""
         left = next(self.seq_left)
-        if self.width is None:
-            self.width = len(left) // self.nplanes_left
+        width = len(left) // self.nplanes_left
         if self.bitdepth is None:
-            # Detect bitdepth
-            if hasattr(left, 'itemsize'):  # array
-                self.bitdepth = left.itemsize * 8
-            elif isinstance(left, (bytes, bytearray)):  # bytearray
-                self.bitdepth = 8
-            else:
-                raise Error("Unknown bitdepth for merging planes")
+            self.detectbitdepth(left)
         right = next(self.seq_right)
-        rowlength = self.nplanes_res * self.width
+        rowlength = self.nplanes_res * width
         new = self.newarray(rowlength)
-        if type(left) == type(right) == type(new):
+        if type(left) == type(right) == type(new) and\
+                (not isinstance(left, array) or
+                 left.typecode == right.typecode == new.typecode):
             # slice assignment
             for i in range(self.nplanes_left):
                 new[i::self.nplanes_res] = left[i::self.nplanes_left]
             for i in range(self.nplanes_right):
-                i_ = i + self.nplanes_left
-                new[i_::self.nplanes_res] = right[i::self.nplanes_right]
+                new[i + self.nplanes_left::self.nplanes_res] =\
+                    right[i::self.nplanes_right]
         else:
             for i in range(self.nplanes_left):
-                for j in range(self.width):
+                for j in range(width):
                     new[i + (j * self.nplanes_res)] =\
                         left[i + (j * self.nplanes_left)]
             for i in range(self.nplanes_right):
-                i_ = i + self.nplanes_left
-                for j in range(self.width):
-                    new[(j * self.nplanes_res) + i_] =\
+                for j in range(width):
+                    new[(j * self.nplanes_res) + self.nplanes_left + i] =\
                         right[(j * self.nplanes_right) + i]
         return new
 
@@ -3068,3 +3075,40 @@ except TypeError:
 
     def newHarray(length=0):
         return array('H', [0] * length)
+
+# Here goes argparse monkeypatching used by scripts
+# Hope to push this to agrparse/python trunk later
+import argparse
+oldfopen = argparse.FileType.__call__
+
+
+def patchedfopen(self, string):
+    # the special argument "-" means sys.std{in,out}
+    if string == '-':
+        if 'r' in self._mode:
+            res = sys.stdin
+        elif 'w' in self._mode:
+            res = sys.stdout
+        else:
+            msg = argparse._('argument "-" with mode %r' % self._mode)
+            raise ValueError(msg)
+        # Extra process for binary mode
+        if 'b' in self._mode:
+            if hasattr(res, 'buffer'):
+                # Python 3 switch to binary buffer from text io
+                res = res.buffer
+            if sys.platform == 'win32' and hasattr(res, 'fileno'):
+                # configure line-end translation mode
+                from os import O_BINARY
+                from msvcrt import setmode
+                try:
+                    setmode(res.fileno(), O_BINARY)
+                except ValueError:
+                    # if stdout rerouted to internal io (like BytesIO)
+                    # which doesn't implement fileno
+                    pass
+        return res
+    return oldfopen(self, string)
+
+
+argparse.FileType.__call__ = patchedfopen

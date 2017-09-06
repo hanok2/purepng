@@ -95,6 +95,7 @@ def get_version():
             break
     return version
 
+
 conf = dict(
     name='purepng',
     version=get_version(),
@@ -119,27 +120,32 @@ PurePNG is written in pure Python(that`s why it`s called Pure).
     package_dir={'png': 'png'},
     packages=['png'],
     classifiers=[
-      'Topic :: Multimedia :: Graphics',
-      'Topic :: Software Development :: Libraries :: Python Modules',
-      'Programming Language :: Python',
-      'Programming Language :: Python :: 2.3',
-      'Programming Language :: Python :: 2.4',
-      'Programming Language :: Python :: 2.5',
-      'Programming Language :: Python :: 2.6',
-      'Programming Language :: Python :: 2.7',
-      'Programming Language :: Python :: 3.1',
-      'Programming Language :: Python :: 3.2',
-      'Programming Language :: Python :: 3.3',
-      'Programming Language :: Python :: 3.4',
-      'Programming Language :: Python :: 3.5',
-      'Programming Language :: Python :: Implementation :: CPython',
-      'Programming Language :: Python :: Implementation :: Jython',
-      'Programming Language :: Python :: Implementation :: PyPy',
-      'License :: OSI Approved :: MIT License',
-      'Operating System :: OS Independent',
-      'Development Status :: 4 - Beta',
+        'Topic :: Multimedia :: Graphics',
+        'Topic :: Software Development :: Libraries :: Python Modules',
+        'Programming Language :: Python',
+        'Programming Language :: Python :: 2.3',
+        'Programming Language :: Python :: 2.4',
+        'Programming Language :: Python :: 2.5',
+        'Programming Language :: Python :: 2.6',
+        'Programming Language :: Python :: 2.7',
+        'Programming Language :: Python :: 3.1',
+        'Programming Language :: Python :: 3.2',
+        'Programming Language :: Python :: 3.3',
+        'Programming Language :: Python :: 3.4',
+        'Programming Language :: Python :: 3.5',
+        'Programming Language :: Python :: 3.6',
+        'Programming Language :: Python :: Implementation :: CPython',
+        'Programming Language :: Python :: Implementation :: Jython',
+        'Programming Language :: Python :: Implementation :: PyPy',
+        'License :: OSI Approved :: MIT License',
+        'Operating System :: OS Independent',
+        'Development Status :: 4 - Beta',
     ],
-    license='MIT License'
+    license='MIT License',
+    keywords=['png', 'Imaging'],
+    zip_safe=True,
+    install_requires=['argparse'],
+    tests_require=['argparse']
 )
 
 if __name__ == '__main__':

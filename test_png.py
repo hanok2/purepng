@@ -1240,8 +1240,7 @@ class CliTest(unittest.TestCase):
         """Test repack tool converting greyscale image to RGB"""
         o = BytesIO()
         _redirect_io(None, o,
-                     lambda: extools.gen.main(['gentest',
-                                               '-RGRL', '-GGLR', '-BGTB']))
+                     lambda: extools.gen.main(['-RGRL', '-GGLR', '-BGTB']))
         o.seek(0)
         r = png.Reader(o)
         rpix = r.read()[2]
