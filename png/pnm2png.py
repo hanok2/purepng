@@ -401,7 +401,7 @@ def main(argv):
                                  % (infilename, width, height,
                                     options.alpha, awidth, aheight))
             arows = file_scanlines(apgmfile, width, height, 1, bitdepth)
-            merged = png.MergedPlanes(rows, depth, arows, 1, bitdepth, width)
+            merged = png.MergedPlanes(rows, depth, arows, 1, bitdepth)
             writer.write(outfile, merged)
             apgmfile.close()
         else:
