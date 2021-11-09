@@ -466,7 +466,7 @@ def try_greyscale(pixels, alpha=False, dirty_alpha=True):
     for row in pixels:
         green = row[1::planes]
         if alpha:
-            apix.append(row[4:planes])
+            apix.append(row[3::planes])
         if (green != row[0::planes] or green != row[2::planes]):
             return False
         else:
@@ -2924,11 +2924,41 @@ class Reader(object):
         source image.  In particular, for this method
         ``metadata['greyscale']`` will be ``False``.
         """
-        width, height, pixels, meta = self.asDirect()
-        if meta['alpha']:
+        def convert_rgba_to_rgb(row, result, bkgd, maxval):
+            """
+            Convert an RGBA image to RGB.
+            """
+            for i in range(len(row) // 4):
+                for j in range(3):
+                    result[(3 * i) + j] =\
+                        (row[(4 * i) + j] * row[(4 * i) + 3] +
+                         bkgd[j] * (maxval - row[(4 * i) + 3])) // maxval
+        self.preamble()
+        if self.alpha and self.greyscale:
+            # Convert to RGBA then process
+            width, height, pixels, meta = self.asRGBA()
+        else:
+            width, height, pixels, meta = self.asDirect()
+
+        maxval = 2**meta['bitdepth'] - 1
+        bkgd = meta.get('background', (maxval, maxval, maxval))
+
+        if meta['alpha'] and not meta['greyscale']:
+            meta['alpha'] = False
+            meta['planes'] = 3
+            newarray = (newBarray, newHarray)[meta['bitdepth'] > 8]
+            def iterrgb():
+                for row in pixels:
+                    a = newarray(3 * width)
+                    convert_rgba_to_rgb(row, a, bkgd, maxval)
+                    yield a
+            return width, height, iterrgb(), meta
+
             raise Error("will not convert image with alpha channel to RGB")
         if not meta['greyscale']:
             return width, height, pixels, meta
+
+        # Greyscale to RGB
         meta['greyscale'] = False
         newarray = (newBarray, newHarray)[meta['bitdepth'] > 8]
 
@@ -2979,6 +3009,9 @@ class Reader(object):
                     a = newarray()
                     filt.convert_la_to_rgba(row, a)
                     yield a
+            if 'background' in meta:
+                meta['background'] = (meta['background'][0], ) * 3
+
         elif meta['greyscale']:
             # L to RGBA
             def convert():
@@ -2986,6 +3019,8 @@ class Reader(object):
                     a = newarray()
                     filt.convert_l_to_rgba(row, a)
                     yield a
+            if 'background' in meta:
+                meta['background'] = (meta['background'][0], ) * 3
         else:
             assert not meta['alpha'] and not meta['greyscale']
             # RGB to RGBA
